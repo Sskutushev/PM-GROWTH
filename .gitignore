@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+**/TestResults/
+**/node_modules/
+**/dist/
+**/.vite/
+.idea/
+.vscode/
+.vs/
+*.user
+*.suo
+coverage/
+playwright-report/
+test-results/
+.env
+!.env.example
