@@ -5,9 +5,9 @@ using Timesheet.Domain.Policies;
 
 namespace Timesheet.UnitTests;
 
-// In-memory порт хранилища: сценарии прикладного слоя (создание, изменение, конкурентность,
-// перенос между периодами) проверяются без контейнера с Mongo. Интеграционные тесты поверх
-// настоящей базы проверяют другое — что запросы и индексы работают.
+// In-memory storage port: application-layer scenarios (create, edit, concurrency, moving
+// between periods) run without a Mongo container. The integration tests against the real
+// database check something else - that the queries and indexes actually work.
 internal sealed class InMemoryTimesheetStore : ITimesheetStore
 {
     private readonly Dictionary<string, Employee> employees = [];
@@ -15,7 +15,7 @@ internal sealed class InMemoryTimesheetStore : ITimesheetStore
     private readonly Dictionary<string, TimeEntry> entries = [];
     private readonly HashSet<(int Year, int Month)> closedPeriods = [];
 
-    /// <summary>Счётчик обращений: используется тестом, который следит за отсутствием N+1.</summary>
+    /// <summary>Call counter, used by the test that guards against N+1 access.</summary>
     internal int DailyHoursCalls { get; private set; }
 
     internal InMemoryTimesheetStore WithEmployee(Employee employee)
@@ -46,7 +46,7 @@ internal sealed class InMemoryTimesheetStore : ITimesheetStore
 
     internal int EntryCount => entries.Count;
 
-    /// <summary>Имитирует чужое сохранение между чтением и записью: версия уходит вперёд.</summary>
+    /// <summary>Simulates somebody else saving between read and write: the version moves ahead.</summary>
     internal void BumpVersionOutOfBand(string id)
     {
         var entry = entries[id];
@@ -91,7 +91,7 @@ internal sealed class InMemoryTimesheetStore : ITimesheetStore
 
     public Task<TimeEntry?> GetEntry(string id, CancellationToken ct)
     {
-        // Копия: до Replace сервис не должен править то, что лежит в «базе».
+        // A copy: until Replace runs, the service must not mutate what sits in the "database".
         var entry = entries.GetValueOrDefault(id);
         return Task.FromResult(entry is null ? null : Clone(entry));
     }
@@ -230,7 +230,7 @@ internal sealed class InMemoryTimesheetStore : ITimesheetStore
 
         var affected = entries.Values.Where(x => x.EmployeeId == employeeId).ToArray();
 
-        // План строится целиком до первой записи — пересчёт не остановится на середине.
+        // The plan is built in full before the first write, so recalculation cannot stop halfway.
         var plan = new List<(TimeEntry Entry, decimal Rate)>();
         long skipped = 0;
 

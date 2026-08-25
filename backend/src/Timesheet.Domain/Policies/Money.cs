@@ -1,8 +1,8 @@
 namespace Timesheet.Domain.Policies;
 
 /// <summary>
-/// Единственное место округления денег. Половина округляется от нуля, а не «к чётному»,
-/// как делает <c>Math.Round(value, 2)</c> по умолчанию.
+/// The single place where money is rounded. Halves go away from zero, not to even,
+/// which is what <c>Math.Round(value, 2)</c> does by default.
 /// </summary>
 public static class Money
 {
@@ -11,8 +11,8 @@ public static class Money
     public static decimal Round(decimal value) => decimal.Round(value, Scale, MidpointRounding.AwayFromZero);
 
     /// <summary>
-    /// Округляем каждую запись, затем суммируем округлённые: иначе итог отчёта
-    /// не сойдётся с суммой видимых строк.
+    /// Round every entry, then sum the rounded values: otherwise the report total
+    /// will not match the sum of the rows the user can see.
     /// </summary>
     public static decimal Calculate(decimal hours, decimal rate) => Round(hours * rate);
 }

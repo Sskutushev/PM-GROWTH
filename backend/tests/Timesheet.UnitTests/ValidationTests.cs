@@ -3,7 +3,8 @@ using Timesheet.Application.Validation;
 
 namespace Timesheet.UnitTests;
 
-// Валидация входа: запрос синтаксически осмыслен и ошибка доезжает до клиента с именем поля.
+// Input validation: the request is syntactically meaningful and the error reaches the client
+// with the offending field named.
 public sealed class ValidationTests
 {
     private static readonly SaveTimeEntryRequestValidator SaveValidator = new();

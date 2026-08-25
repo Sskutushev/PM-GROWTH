@@ -4,11 +4,11 @@ using Timesheet.Domain.Errors;
 
 namespace Timesheet.Api.Middleware;
 
-// Единственное место, где исключение превращается в HTTP-ответ.
-//   DomainException         — ожидаемая ошибка: 400/404/409 с машиночитаемым кодом;
-//   BadHttpRequestException — тело или параметры не разобрались: тоже 400 и тоже с кодом,
-//                             иначе клиент получает пустое тело;
-//   всё остальное           — дефект сервера: 500, детали в логах, наружу только traceId.
+// The single place where an exception becomes an HTTP response.
+//   DomainException         - an expected failure: 400/404/409 with a machine-readable code;
+//   BadHttpRequestException - body or parameters did not parse: also 400 and also with a code,
+//                             otherwise the client gets an empty body;
+//   anything else           - a server defect: 500, details in the log, only a traceId outside.
 public sealed partial class ProblemDetailsMiddleware(RequestDelegate next, ILogger<ProblemDetailsMiddleware> logger)
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
@@ -44,7 +44,7 @@ public sealed partial class ProblemDetailsMiddleware(RequestDelegate next, ILogg
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
-            // Клиент ушёл — отвечать некому, и это не повод писать в лог 500.
+            // The client is gone, so there is nobody to answer, and this is not a 500.
             LogRequestAborted(logger, context.Request.Path.Value ?? "/");
         }
         catch (Exception exception)
@@ -65,7 +65,7 @@ public sealed partial class ProblemDetailsMiddleware(RequestDelegate next, ILogg
         }
     }
 
-    // Source-generated логирование: аргументы не форматируются, если уровень выключен.
+    // Source-generated logging: arguments are not formatted when the level is disabled.
     [LoggerMessage(Level = LogLevel.Information, Message = "Malformed request {Method} {Path}: {Reason}")]
     private static partial void LogMalformedRequest(ILogger logger, string method, string path, string reason);
 
@@ -89,7 +89,7 @@ public sealed partial class ProblemDetailsMiddleware(RequestDelegate next, ILogg
     {
         if (context.Response.HasStarted)
         {
-            // Заголовки уже ушли: статус не переписать.
+            // Headers are already on the wire: the status can no longer be changed.
             return;
         }
 

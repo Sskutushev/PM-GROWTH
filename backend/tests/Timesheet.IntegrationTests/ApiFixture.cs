@@ -6,8 +6,8 @@ using Testcontainers.MongoDb;
 
 namespace Timesheet.IntegrationTests;
 
-// Один контейнер с MongoDB и один хост на весь прогон: поднимать их на каждый класс
-// тестов дорого. Изоляция между тестами обеспечивается пересевом данных.
+// One MongoDB container and one host for the whole run: starting them per test class is
+// expensive. Isolation between tests comes from reseeding the data.
 public sealed class ApiFixture : IAsyncLifetime
 {
     private readonly MongoDbContainer mongo = new MongoDbBuilder()
@@ -43,7 +43,7 @@ public sealed class ApiFixture : IAsyncLifetime
         await mongo.DisposeAsync();
     }
 
-    /// <summary>Возвращает базу к контрольным данным задания перед каждым тестом.</summary>
+    /// <summary>Resets the database to the reference data from the task before each test.</summary>
     public async Task ResetAsync()
     {
         var response = await Client.PostAsync("/api/seed", null);

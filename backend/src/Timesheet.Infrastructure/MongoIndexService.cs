@@ -7,8 +7,8 @@ using MongoDB.Driver;
 namespace Timesheet.Infrastructure;
 
 /// <summary>
-/// Создаёт индексы на старте приложения. Операция идемпотентна:
-/// Mongo не пересоздаёт индекс, который уже существует с тем же именем и ключами.
+/// Creates indexes at startup. The operation is idempotent: Mongo does not rebuild an index
+/// that already exists with the same name and keys.
 /// </summary>
 public sealed partial class MongoIndexService(
     IMongoClient client,
@@ -24,17 +24,17 @@ public sealed partial class MongoIndexService(
             .Indexes
             .CreateManyAsync(
                 [
-                    // Отчёт за месяц: диапазон по дате, затем группировка по проекту.
+                    // Monthly report: a date range first, then grouping by project.
                     new CreateIndexModel<BsonDocument>(
                         Builders<BsonDocument>.IndexKeys.Ascending("date").Ascending("projectId"),
                         new CreateIndexOptions { Name = "date_project" }),
 
-                    // Суточный лимит и фильтр «сотрудник + месяц»: equality до range (правило ESR).
+                    // Daily cap and the employee+month filter: equality before range (the ESR rule).
                     new CreateIndexModel<BsonDocument>(
                         Builders<BsonDocument>.IndexKeys.Ascending("employeeId").Ascending("date"),
                         new CreateIndexOptions { Name = "employee_date" }),
 
-                    // Фильтр «проект + месяц».
+                    // The project+month filter.
                     new CreateIndexModel<BsonDocument>(
                         Builders<BsonDocument>.IndexKeys.Ascending("projectId").Ascending("date"),
                         new CreateIndexOptions { Name = "project_date" }),
@@ -64,7 +64,7 @@ public sealed partial class MongoIndexService(
 
     public Task StopAsync(CancellationToken ct) => Task.CompletedTask;
 
-    // Source-generated логирование: сообщение не форматируется, если уровень выключен.
+    // Source-generated logging: the message is not formatted when the level is disabled.
     [LoggerMessage(Level = LogLevel.Information, Message = "Mongo indexes ensured for database {Database}")]
     private static partial void LogIndexesEnsured(ILogger logger, string database);
 }

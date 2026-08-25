@@ -1,8 +1,8 @@
 namespace Timesheet.Infrastructure;
 
 /// <summary>
-/// Имена коллекций в одном месте. Строковый литерал, разбросанный по репозиторию,
-/// ловится только в runtime — и только на той ветке кода, куда дошёл тест.
+/// Collection names in one place. A string literal scattered across the repository only
+/// fails at runtime, and only on the code path a test happened to reach.
 /// </summary>
 internal static class MongoCollections
 {

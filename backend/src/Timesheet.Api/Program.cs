@@ -11,7 +11,7 @@ using Timesheet.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---------- Состав приложения ----------
+// ---------- Composition ----------
 
 builder.Services.AddScoped<TimesheetService>();
 builder.Services.AddValidatorsFromAssemblyContaining<SaveTimeEntryRequestValidator>(ServiceLifetime.Singleton);
@@ -19,7 +19,7 @@ builder.Services.AddMongoInfrastructure(builder.Configuration);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    // Русский текст в ответах не должен превращаться в \uXXXX: это читаемость логов и curl.
+    // Russian text must not be escaped into \uXXXX: this is about readable logs and curl output.
     options.SerializerOptions.Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
@@ -34,9 +34,9 @@ builder.Services.AddSwaggerGen(options => options.SwaggerDoc("v1", new OpenApiIn
 
 builder.Services.AddHealthChecks();
 
-// Ответы, которые ASP.NET формирует сам (несовпавший маршрут, неразобранное тело,
-// неподдерживаемый Content-Type), по умолчанию уходят с пустым телом.
-// Здесь им дописывается тот же контракт, что и у доменных ошибок: код, traceId, русский текст.
+// Responses ASP.NET produces on its own (unmatched route, unparsed body, unsupported
+// content type) ship with an empty body by default. This gives them the same contract as
+// domain errors: a code, a traceId and a human-readable message.
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
 {
     var status = context.HttpContext.Response.StatusCode;
@@ -53,9 +53,9 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
 
 var app = builder.Build();
 
-// ---------- Конвейер ----------
+// ---------- Pipeline ----------
 
-// Обработчик ошибок стоит первым: всё, что бросят маршруты ниже, обязано пройти через него.
+// The error handler goes first: everything thrown by the routes below must pass through it.
 app.UseMiddleware<ProblemDetailsMiddleware>();
 app.UseStatusCodePages();
 app.UseCors();
@@ -73,10 +73,10 @@ api.MapMaintenance();
 
 app.Run();
 
-/// <summary>Точка входа partial, чтобы интеграционные тесты поднимали хост через WebApplicationFactory.</summary>
+/// <summary>Partial so integration tests can boot the host through WebApplicationFactory.</summary>
 public partial class Program;
 
-/// <summary>Тексты и коды для ответов, которые формирует сам ASP.NET, а не доменный слой.</summary>
+/// <summary>Messages and codes for responses produced by ASP.NET itself rather than the domain.</summary>
 internal static class StatusTitles
 {
     internal static string For(int status) => status switch

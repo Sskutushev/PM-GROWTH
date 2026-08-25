@@ -8,8 +8,8 @@ namespace Timesheet.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Единственная точка, где приложение узнаёт, что хранилище — это MongoDB.
-    /// Смена реализации порта не затрагивает Application и Domain.
+    /// The only place where the application learns that the store is MongoDB.
+    /// Swapping the port implementation leaves Application and Domain untouched.
     /// </summary>
     public static IServiceCollection AddMongoInfrastructure(
         this IServiceCollection services,
@@ -22,7 +22,7 @@ public static class DependencyInjection
             .GetValue<string>(nameof(MongoOptions.ConnectionString))
             ?? "mongodb://localhost:27017";
 
-        // MongoClient потокобезопасен и держит пул соединений — он обязан быть синглтоном.
+        // MongoClient is thread-safe and owns the connection pool, so it has to be a singleton.
         services.AddSingleton<IMongoClient>(_ => new MongoClient(connectionString));
 
         services.AddScoped<ITimesheetStore, MongoTimesheetStore>();

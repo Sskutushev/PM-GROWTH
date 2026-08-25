@@ -6,15 +6,16 @@ using Timesheet.Domain.Policies;
 
 namespace Timesheet.Application.Validation;
 
-// Валидация входа отвечает на вопрос «запрос синтаксически осмыслен?»: обязательные поля,
-// диапазоны, формат. Бизнес-правила (ставка на дату, закрытый период, суточный лимит) живут
-// в Timesheet.Domain — им нужны данные из хранилища.
+// Input validation answers one question: is the request syntactically meaningful? Required
+// fields, ranges, formats. Business rules (rate on a date, closed period, daily cap) live in
+// Timesheet.Domain because they need data from the store.
 //
-// Кратность часов проверяется в обоих слоях намеренно: валидатор даёт пользователю ошибку
-// с именем поля, домен держит инвариант для записей, пришедших мимо HTTP (сидер, пересчёт).
+// The half-hour step is checked in both layers on purpose: the validator gives the user a
+// field-level error, the domain keeps the invariant for entries that arrive outside HTTP
+// (seeding, recalculation).
 public static class ValidationErrors
 {
-    /// <summary>Результат FluentValidation → доменная 400 с разбивкой по полям.</summary>
+    /// <summary>Turns a FluentValidation result into a domain 400 broken down by field.</summary>
     public static DomainException ToDomainException(this ValidationResult result)
     {
         var fields = result.Errors

@@ -6,8 +6,8 @@ using Timesheet.Application.Contracts;
 
 namespace Timesheet.IntegrationTests;
 
-// ТЗ требует, чтобы ошибка была 400/409 с машиночитаемым кодом и русским текстом,
-// а не 500 и не пустое тело. Эти тесты держат именно контракт ответа.
+// The task requires errors to be 400/409 with a machine-readable code and a human-readable
+// message, not a 500 and not an empty body. These tests pin that response contract.
 [Collection(ApiCollection.Name)]
 public sealed class ErrorContractTests(ApiFixture fixture) : IAsyncLifetime
 {

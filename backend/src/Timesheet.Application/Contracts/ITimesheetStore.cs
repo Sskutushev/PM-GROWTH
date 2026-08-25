@@ -3,12 +3,12 @@ using Timesheet.Domain.Models;
 namespace Timesheet.Application.Contracts;
 
 /// <summary>
-/// Порт хранилища. Application не знает про Mongo и BSON: сценарии гоняются на in-memory
-/// реализации, а отчётную часть можно увести в другое хранилище (см. SCALING.md).
+/// Storage port. Application knows nothing about Mongo or BSON: scenarios run against an
+/// in-memory implementation, and the reporting side can move to another store (see SCALING.md).
 /// </summary>
 public interface ITimesheetStore
 {
-    // ---------- Справочники ----------
+    // ---------- Catalogues ----------
 
     Task<Employee?> GetEmployee(string id, CancellationToken cancellationToken);
 
@@ -18,17 +18,17 @@ public interface ITimesheetStore
 
     Task<IReadOnlyList<LookupItem>> Projects(CancellationToken cancellationToken);
 
-    // ---------- Периоды ----------
+    // ---------- Periods ----------
 
     Task<bool> IsPeriodClosed(DateOnly entryDate, CancellationToken cancellationToken);
 
     Task SetPeriod(int year, int month, bool closed, CancellationToken cancellationToken);
 
-    // ---------- Записи табеля ----------
+    // ---------- Time entries ----------
 
     Task<TimeEntry?> GetEntry(string id, CancellationToken cancellationToken);
 
-    /// <summary>Часы сотрудника за дату по всем проектам, без учёта изменяемой записи.</summary>
+    /// <summary>Hours logged by an employee on a date across all projects, excluding the entry being edited.</summary>
     Task<decimal> GetDailyHours(
         string employeeId,
         DateOnly entryDate,
@@ -38,8 +38,8 @@ public interface ITimesheetStore
     Task<TimeEntry> Insert(TimeEntry entry, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Замена по паре <c>(_id, expectedVersion)</c>. <c>null</c> — версия не совпала,
-    /// то есть конкурентное изменение, а не отсутствие записи.
+    /// Replace matched on <c>(_id, expectedVersion)</c>. <c>null</c> means the version did not
+    /// match — a concurrent edit, not a missing document.
     /// </summary>
     Task<TimeEntry?> Replace(TimeEntry entry, long expectedVersion, CancellationToken cancellationToken);
 
@@ -47,19 +47,19 @@ public interface ITimesheetStore
 
     Task<PagedResult<TimeEntryView>> List(TimeEntryQuery query, CancellationToken cancellationToken);
 
-    // ---------- Отчёт ----------
+    // ---------- Report ----------
 
-    /// <summary>Группировка выполняется базой: возвращается строка на проект, а не записи табеля.</summary>
+    /// <summary>Grouping happens in the database: one row per project comes back, not the entries.</summary>
     Task<ProjectReport> Report(int year, int month, CancellationToken cancellationToken);
 
-    // ---------- Ставки ----------
+    // ---------- Rates ----------
 
     Task<RecalculationResult> UpdateRates(
         string employeeId,
         IReadOnlyList<HourlyRate> rates,
         CancellationToken cancellationToken);
 
-    // ---------- Обслуживание ----------
+    // ---------- Maintenance ----------
 
     Task Seed(CancellationToken cancellationToken);
 }

@@ -4,7 +4,7 @@ using Timesheet.Domain.Models;
 
 namespace Timesheet.Domain.Policies;
 
-/// <summary>Данные, которых достаточно для проверки бизнес-правил записи.</summary>
+/// <summary>Everything needed to check the business rules of one entry.</summary>
 public sealed record TimeEntryContext(
     Employee Employee,
     Project Project,
@@ -15,8 +15,8 @@ public sealed record TimeEntryContext(
     decimal HoursAlreadyLoggedThatDay);
 
 /// <summary>
-/// Порядок проверок — часть контракта: в закрытом периоде пользователь должен получить
-/// «период закрыт», а не «часы кратны 0,5». Порядок закреплён тестом.
+/// Check order is part of the contract: in a closed period the user must be told the period
+/// is closed, not that hours must be a multiple of 0.5. The order is pinned by a test.
 /// </summary>
 public static class TimeEntryPolicy
 {
@@ -42,7 +42,7 @@ public static class TimeEntryPolicy
         }
     }
 
-    /// <summary>Границы включительны с обеих сторон; отсутствующее окончание — бессрочный проект.</summary>
+    /// <summary>Both bounds are inclusive; a missing end date means an open-ended project.</summary>
     public static void EnsureDateWithinProject(Project project, DateOnly date)
     {
         var isBeforeStart = date < project.StartDate;

@@ -3,18 +3,18 @@ using Timesheet.Domain.Models;
 
 namespace Timesheet.Infrastructure;
 
-// Маппинг домен ↔ BSON руками, а не атрибутами драйвера: схема хранения — деталь
-// инфраструктуры, домен не должен обрастать атрибутами Mongo. Заодно в одном месте видно,
-// что деньги лежат как Decimal128, а дата — как UTC-полночь.
+// Domain-to-BSON mapping written by hand rather than with driver attributes: the storage
+// schema is an infrastructure detail and the domain should not grow Mongo attributes for it.
+// It also keeps in one place the fact that money is Decimal128 and dates are UTC midnight.
 internal static class MongoMapping
 {
-    /// <summary>Бизнес-дата хранится как полночь UTC; домен работает с <see cref="DateOnly"/>.</summary>
+    /// <summary>Business dates are stored as UTC midnight; the domain works with <see cref="DateOnly"/>.</summary>
     internal static DateTime ToUtc(DateOnly value) =>
         DateTime.SpecifyKind(value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
 
     internal static DateOnly ToDate(BsonValue value) => DateOnly.FromDateTime(value.ToUniversalTime());
 
-    /// <summary>Деньги и часы — Decimal128: double даёт двоичную погрешность на копейках.</summary>
+    /// <summary>Money and hours are Decimal128: double introduces binary error at the kopeck level.</summary>
     internal static decimal Decimal(BsonValue value) => Decimal128.ToDecimal(value.AsDecimal128);
 
     internal static BsonDecimal128 Decimal(decimal value) => new(value);

@@ -9,8 +9,8 @@ using Timesheet.Domain.Policies;
 namespace Timesheet.Infrastructure;
 
 /// <summary>
-/// Порт хранилища поверх официального драйвера. ORM не используется: агрегации пишутся явно,
-/// поэтому видно, какой запрос уйдёт в базу и какой индекс он возьмёт.
+/// The storage port on top of the official driver. No ORM: aggregations are written out in
+/// full, so it is visible which query reaches the database and which index it will use.
 /// </summary>
 public sealed class MongoTimesheetStore : ITimesheetStore
 {
@@ -28,7 +28,7 @@ public sealed class MongoTimesheetStore : ITimesheetStore
     private IMongoCollection<BsonDocument> ClosedPeriods =>
         database.GetCollection<BsonDocument>(MongoCollections.ClosedPeriods);
 
-    // ---------- Справочники ----------
+    // ---------- Catalogues ----------
 
     public async Task<Employee?> GetEmployee(string id, CancellationToken ct)
     {
@@ -72,7 +72,7 @@ public sealed class MongoTimesheetStore : ITimesheetStore
             .ToArray();
     }
 
-    // ---------- Периоды ----------
+    // ---------- Periods ----------
 
     public Task<bool> IsPeriodClosed(DateOnly date, CancellationToken ct) =>
         ClosedPeriods
@@ -97,7 +97,7 @@ public sealed class MongoTimesheetStore : ITimesheetStore
         }
     }
 
-    // ---------- Записи табеля ----------
+    // ---------- Time entries ----------
 
     public async Task<TimeEntry?> GetEntry(string id, CancellationToken ct)
     {
@@ -139,7 +139,7 @@ public sealed class MongoTimesheetStore : ITimesheetStore
 
     public async Task<TimeEntry?> Replace(TimeEntry entry, long expectedVersion, CancellationToken ct)
     {
-        // Версия в фильтре: проверка и запись атомарны на стороне Mongo.
+        // The version sits in the filter, so the check and the write are atomic in Mongo.
         var filter = Builders<BsonDocument>.Filter.Eq("_id", entry.Id)
             & Builders<BsonDocument>.Filter.Eq("version", expectedVersion);
 
@@ -231,13 +231,13 @@ public sealed class MongoTimesheetStore : ITimesheetStore
         return new PagedResult<TimeEntryView>(items, query.Page, query.PageSize, totalCount, totalHours, totalAmount);
     }
 
-    // ---------- Отчёт ----------
+    // ---------- Report ----------
 
     public async Task<ProjectReport> Report(int year, int month, CancellationToken ct)
     {
         var range = MonthRange.Create(year, month);
 
-        // Группирует база: в приложение приходит строка на проект, а не записи табеля.
+        // The database groups: one row per project reaches the application, not the entries.
         var pipeline = new[]
         {
             new BsonDocument("$match", new BsonDocument("date", new BsonDocument
@@ -285,7 +285,7 @@ public sealed class MongoTimesheetStore : ITimesheetStore
         return new ProjectReport(rows, rows.Sum(x => x.Hours), rows.Sum(x => x.Amount));
     }
 
-    // ---------- Ставки ----------
+    // ---------- Rates ----------
 
     public async Task<RecalculationResult> UpdateRates(
         string employeeId,
@@ -336,7 +336,7 @@ public sealed class MongoTimesheetStore : ITimesheetStore
         return new RecalculationResult(recalculated, skipped);
     }
 
-    // ---------- Обслуживание ----------
+    // ---------- Maintenance ----------
 
     public async Task Seed(CancellationToken ct)
     {

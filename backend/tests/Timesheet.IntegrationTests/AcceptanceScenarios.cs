@@ -5,8 +5,8 @@ using Timesheet.Domain.Models;
 
 namespace Timesheet.IntegrationTests;
 
-// Раздел «Приёмочные проверки» задания, прогнанный через HTTP поверх настоящей MongoDB.
-// Цифры здесь взяты из задания дословно и не должны «уточняться» под реализацию.
+// The acceptance checks from the task, driven over HTTP against a real MongoDB.
+// The numbers are taken from the task verbatim and must never be "adjusted" to fit the code.
 [Collection(ApiCollection.Name)]
 public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
 {
@@ -14,7 +14,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    // ---------- Отчёты ----------
+    // ---------- Reports ----------
 
     [Fact]
     public async Task March_report_matches_the_acceptance_table()
@@ -58,7 +58,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
         Assert.Equal(0m, report.TotalAmount);
     }
 
-    // ---------- Список табеля ----------
+    // ---------- Timesheet listing ----------
 
     [Fact]
     public async Task Empty_optional_filters_do_not_hide_month_entries()
@@ -93,7 +93,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
         Assert.Equal(4_000m, entry.Amount);
     }
 
-    // ---------- Сценарий 1: нет ставки на дату ----------
+    // ---------- Scenario 1: no rate on that date ----------
 
     [Fact]
     public async Task Scenario_1_entry_before_the_first_rate_is_rejected()
@@ -104,7 +104,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
         Assert.Contains("RATE_NOT_FOUND", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
-    // ---------- Сценарии 2 и 3: переработка и суточный лимит ----------
+    // ---------- Scenarios 2 and 3: overtime and the daily cap ----------
 
     [Fact]
     public async Task Scenario_2_twenty_hours_are_saved_and_flagged_as_overtime()
@@ -142,7 +142,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
-    // ---------- Сценарий 4: границы проекта ----------
+    // ---------- Scenario 4: project boundaries ----------
 
     [Fact]
     public async Task Scenario_4_entry_before_the_project_starts_is_rejected()
@@ -172,7 +172,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
         Assert.Equal(600m, created.AppliedRate);
     }
 
-    // ---------- Сценарий 5: закрытый период ----------
+    // ---------- Scenario 5: closed period ----------
 
     [Fact]
     public async Task Scenario_5_entries_in_a_closed_month_cannot_be_changed()
@@ -218,7 +218,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
     }
 
-    // ---------- Сценарий 6: формат часов ----------
+    // ---------- Scenario 6: hour format ----------
 
     [Theory]
     [InlineData(0)]
@@ -232,7 +232,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
 
-    // ---------- Сценарий 7: конкурентное редактирование ----------
+    // ---------- Scenario 7: concurrent editing ----------
 
     [Fact]
     public async Task Scenario_7_second_tab_gets_a_clear_refusal()
@@ -254,7 +254,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
             await secondTab.Content.ReadAsStringAsync(),
             StringComparison.Ordinal);
 
-        // Чужие изменения не затёрты.
+        // The other tab's changes were not overwritten.
         var page = await Get<PagedResult<TimeEntryView>>("/api/time-entries?year=2026&month=3&employeeId=ivanov");
         Assert.Equal(4m, page.Items.Single(x => x.Id == created.Id).Hours);
     }
@@ -285,7 +285,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
         Assert.DoesNotContain(page.Items, x => x.Id == created.Id);
     }
 
-    // ---------- Сценарий 8: ретроактивное изменение ставки ----------
+    // ---------- Scenario 8: retroactive rate change ----------
 
     [Fact]
     public async Task Scenario_8_retroactive_rate_change_recalculates_march()
@@ -338,7 +338,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
         }
     }
 
-    // ---------- Справочники ----------
+    // ---------- Catalogues ----------
 
     [Fact]
     public async Task Lookups_expose_seeded_catalogues()
@@ -351,7 +351,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
         Assert.Equal(["П-001", "П-002"], projects.Select(x => x.Code));
     }
 
-    // ---------- Вспомогательное ----------
+    // ---------- Helpers ----------
 
     private static SaveTimeEntryRequest Entry(
         string employeeId,
@@ -388,7 +388,7 @@ public sealed class AcceptanceScenarios(ApiFixture fixture) : IAsyncLifetime
             ?? throw new InvalidOperationException($"Пустой ответ {url}.");
     }
 
-    // Тело ответа в сообщении об ошибке: иначе падение выглядит как «500» без причины.
+    // The response body goes into the failure message: otherwise a break reads as "500" with no reason.
     private static async Task EnsureSuccess(HttpResponseMessage response, string url)
     {
         if (response.IsSuccessStatusCode)

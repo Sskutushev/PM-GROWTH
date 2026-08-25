@@ -1,9 +1,9 @@
 namespace Timesheet.Domain.Errors;
 
 /// <summary>
-/// Единственный тип исключения, который API переводит в осмысленный ответ.
-/// Всё остальное считается дефектом кода и отдаётся как 500, поэтому любая
-/// ожидаемая ошибка — включая ошибки входных данных — обязана быть именно им.
+/// The only exception type the API turns into a meaningful response. Everything else
+/// is treated as a defect and returned as 500, so every expected failure — including
+/// bad input — has to be one of these.
 /// </summary>
 public sealed class DomainException : Exception
 {
@@ -21,10 +21,10 @@ public sealed class DomainException : Exception
 
     public string Code { get; }
 
-    /// <summary>400 — данные, 404 — не найдено, 409 — конфликт состояния.</summary>
+    /// <summary>400 for input, 404 for missing, 409 for a state conflict.</summary>
     public int Status { get; }
 
-    /// <summary>Подробности для UI: имя поля, лимиты, фактические значения.</summary>
+    /// <summary>Structured detail for the UI: field name, limits, actual values.</summary>
     public IReadOnlyDictionary<string, object?> Details { get; }
 
     public static DomainException Validation(string message, string? field = null) => new(

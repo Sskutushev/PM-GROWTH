@@ -1,8 +1,8 @@
 namespace Timesheet.Domain.Policies;
 
 /// <summary>
-/// Флаги считаются по <paramref name="RawPercent"/>, в интерфейс идёт <paramref name="DisplayPercent"/>.
-/// Разделение обязательно: 100,004 % округляется до 100,00 %, и перерасход пропал бы с экрана.
+/// Flags are derived from <paramref name="RawPercent"/>; the UI shows <paramref name="DisplayPercent"/>.
+/// The split matters: 100.004% rounds to 100.00% and the overspend would vanish from the screen.
 /// </summary>
 public sealed record BudgetState(
     decimal? RawPercent,
@@ -17,7 +17,7 @@ public static class BudgetPolicy
 
     public static BudgetState Evaluate(decimal amount, decimal budget)
     {
-        // Процент не определён: null вместо Infinity/NaN, интерфейс покажет прочерк.
+        // The percentage is undefined: null rather than Infinity/NaN, and the UI shows a dash.
         if (budget == 0)
         {
             return new BudgetState(null, null, false, false);
