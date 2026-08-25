@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+</head>
+<body>
+<title>Трудозатраты по проектам</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600;700&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap">
+
+<style>
+:root {
+    --paper: #f4f6f8;
+    --sheet: #ffffff;
+    --ink: #16243a;
+    --ink-soft: #4b5b73;
+    --ink-faint: #7d8ba1;
+    --rule: #ccd5e0;
+    --rule-soft: #e3e9f0;
+    --blueprint: #2f5d8c;
+    --accent: #d1701a;
+    --accent-soft: #fbeee0;
+    --warn-bg: #fdf2ef;
+    --warn-rule: #e0b3a4;
+    --code-bg: #f0f3f7;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --paper: #0e151f;
+        --sheet: #141d2a;
+        --ink: #dde4ee;
+        --ink-soft: #a3b0c2;
+        --ink-faint: #74839a;
+        --rule: #2c3a4e;
+        --rule-soft: #212d3d;
+        --blueprint: #7ea8d4;
+        --accent: #e8934a;
+        --accent-soft: #2a2015;
+        --warn-bg: #2a1a16;
+        --warn-rule: #6b3f30;
+        --code-bg: #101822;
+    }
+}
+
+:root[data-theme="dark"] {
+    --paper: #0e151f;
+    --sheet: #141d2a;
+    --ink: #dde4ee;
+    --ink-soft: #a3b0c2;
+    --ink-faint: #74839a;
+    --rule: #2c3a4e;
+    --rule-soft: #212d3d;
+    --blueprint: #7ea8d4;
+    --accent: #e8934a;
+    --accent-soft: #2a2015;
+    --warn-bg: #2a1a16;
+    --warn-rule: #6b3f30;
+    --code-bg: #101822;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "PT Serif", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 20px 96px;
+    -webkit-font-smoothing: antialiased;
+}
+
+.sheet {
+    max-width: 800px;
+    margin: 0 auto;
+    background: var(--sheet);
+    border: 1px solid var(--rule);
+    border-top: none;
+    padding: 0 clamp(20px, 5vw, 56px) 64px;
+}
+
+/* --- штамп --- */
+
+.stamp { margin: 0 calc(-1 * clamp(20px, 5vw, 56px)); border-bottom: 2px solid var(--ink); }
+
+.stamp-head {
+    padding: clamp(28px, 5vw, 44px) clamp(20px, 5vw, 56px) 22px;
+    border-bottom: 1px solid var(--rule);
+}
+
+.eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+}
+
+h1 {
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(30px, 5.4vw, 44px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 10px;
+}
+
+.subtitle { color: var(--ink-soft); font-size: 18px; margin: 0; max-width: 52ch; }
+
+.stamp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+}
+
+.stamp-cell {
+    padding: 12px clamp(20px, 5vw, 56px);
+    border-right: 1px solid var(--rule-soft);
+    border-top: 1px solid var(--rule-soft);
+}
+
+.stamp-cell:last-child { border-right: none; }
+.stamp-cell dt { color: var(--ink-faint); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 3px; }
+.stamp-cell dd { margin: 0; color: var(--ink); font-weight: 500; }
+
+/* --- типографика --- */
+
+h2 {
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    text-wrap: balance;
+    margin: 56px 0 6px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+}
+
+h3 {
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 19px;
+    font-weight: 600;
+    margin: 34px 0 8px;
+    text-wrap: balance;
+}
+
+h4 {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 28px 0 6px;
+}
+
+.part-mark {
+    display: block;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+}
+
+p, li { max-width: 68ch; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 16px; padding-left: 22px; }
+li { margin-bottom: 7px; }
+li::marker { color: var(--ink-faint); }
+strong { font-weight: 700; }
+
+code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.86em;
+    background: var(--code-bg);
+    border: 1px solid var(--rule-soft);
+    border-radius: 2px;
+    padding: 1px 4px;
+}
+
+.lede {
+    font-size: 18px;
+    color: var(--ink-soft);
+    border-left: 2px solid var(--accent);
+    padding-left: 18px;
+    margin: 28px 0 24px;
+}
+
+/* --- таблицы --- */
+
+.table-wrap { overflow-x: auto; margin: 16px 0 22px; border: 1px solid var(--rule); }
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 14.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--code-bg);
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+}
+
+td { padding: 9px 14px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+tbody tr:last-child td { border-bottom: none; }
+td.num { text-align: right; white-space: nowrap; }
+tr.total td { font-weight: 700; background: var(--code-bg); }
+td.mono, th.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; }
+.method { color: var(--blueprint); font-weight: 600; }
+.flag { color: var(--accent); font-weight: 600; }
+
+/* --- блоки кода --- */
+
+details {
+    border: 1px solid var(--rule);
+    margin: 14px 0 22px;
+    background: var(--code-bg);
+}
+
+summary {
+    cursor: pointer;
+    padding: 11px 16px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+    color: var(--blueprint);
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+}
+
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "показать"; color: var(--ink-faint); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+details[open] summary { border-bottom: 1px solid var(--rule); }
+details[open] summary::after { content: "скрыть"; }
+summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+pre {
+    margin: 0;
+    padding: 16px;
+    overflow-x: auto;
+    max-height: 560px;
+    overflow-y: auto;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    line-height: 1.62;
+    color: var(--ink-soft);
+    tab-size: 4;
+}
+
+pre code { background: none; border: none; padding: 0; font-size: inherit; }
+
+/* --- врезки --- */
+
+.note {
+    background: var(--accent-soft);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 16px 18px;
+    margin: 22px 0;
+}
+
+.note p:last-child, .note ul:last-child { margin-bottom: 0; }
+.note h4 { margin-top: 0; color: var(--ink); }
+
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 32px; }
+.cols ul { margin-bottom: 8px; }
+
+footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 2px solid var(--ink);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+    color: var(--ink-faint);
+}
+
+a { color: var(--blueprint); }
+</style>
+
+<article class="sheet">
+
+<header class="stamp">
+    <div class="stamp-head">
+        <p class="eyebrow">Тестовое задание</p>
+        <h1>Учёт трудозатрат и стоимость работ по проектам</h1>
+        <p class="subtitle">Fullstack-разработчик: .NET, MongoDB, React&nbsp;+&nbsp;TypeScript</p>
+    </div>
+    <dl class="stamp-grid">
+        <div class="stamp-cell"><dt>Объём</dt><dd>6–8 часов</dd></div>
+        <div class="stamp-cell"><dt>Срок</dt><dd>5 календарных дней</dd></div>
+        <div class="stamp-cell"><dt>Частей</dt><dd>2 + разбор</dd></div>
+        <div class="stamp-cell"><dt>Формат сдачи</dt><dd>ссылка на репозиторий</dd></div>
+    </dl>
+</header>
+
+<h2>О проекте</h2>
+
+<p>ERP-система для проектной организации: договоры и проекты, сотрудники, табель рабочего времени, зарплата и премии, накладные расходы, рентабельность, склад, документооборот. Система работает в продакшене несколько лет, база живая, пользователи реальные.</p>
+
+<div class="table-wrap">
+<table>
+<tbody>
+<tr><td class="mono">Backend</td><td>.NET 5 (C#), REST + SignalR, CQRS через MediatR, FluentValidation</td></tr>
+<tr><td class="mono">База</td><td>MongoDB — единственное хранилище, реляционной БД нет: агрегации, change streams</td></tr>
+<tr><td class="mono">Frontend</td><td>React 16 + TypeScript, mobx-state-tree, Formik + Yup, ag-Grid, Blueprint.js</td></tr>
+<tr><td class="mono">Прочее</td><td>Docker, Hangfire, генерация документов из шаблонов</td></tr>
+</tbody>
+</table>
+</div>
+
+<p class="lede">Работа примерно на 80&nbsp;% — доработка и починка существующего кода, на 20&nbsp;% — новые модули. Поэтому задание состоит из двух частей: прочитать чужой код и написать свой.</p>
+
+<h2>Правила</h2>
+
+<ul>
+<li><strong>Ориентировочное время — 6–8 часов.</strong> Не нужно вылизывать: нужно, чтобы работало и было понятно, почему сделано именно так.</li>
+<li><strong>Вопросы приветствуются.</strong> Спецификация намеренно оставляет несколько мест недосказанными. Уточняющий вопрос — это плюс к оценке, а не минус. Решили не спрашивать — зафиксируйте допущение в <code>NOTES.md</code>.</li>
+<li><strong>ИИ-ассистенты разрешены</strong> — Claude Code, Copilot, Cursor: мы сами ими пользуемся. Условие одно: на разборе вы объясняете любую строку и говорите, где вы с ассистентом не согласились.</li>
+<li><strong>Дизайн не оценивается.</strong> Оцениваются корректность, структура и обработка ошибок.</li>
+</ul>
+
+<h2><span class="part-mark">Часть 1 · 1–1,5 часа</span>Code review</h2>
+
+<p>Ниже два файла из учебного проекта, написанные «как получилось». Они компилируются и в happy path работают. Задача — <strong>найти проблемы и отранжировать их по важности</strong>.</p>
+
+<p>Оформите ответ в файле <code>REVIEW.md</code>:</p>
+
+<ol>
+<li>Список найденных проблем: файл и фрагмент, в чём суть, <strong>чем это грозит в продакшене</strong>, как чинить. Сортировка — от самой опасной к косметике.</li>
+<li>Отдельно: что бы вы изменили в <em>структуре</em> этого кода, а не в отдельных строках.</li>
+<li>Одну-две проблемы, которые считаете самыми важными, исправьте прямо в коде — положите исправленные файлы рядом, например <code>TimesheetReportHandler.fixed.cs</code>.</li>
+</ol>
+
+<details open>
+<summary>TimesheetReportHandler.cs — отчёт «стоимость трудозатрат по проектам за месяц»</summary>
+<pre><code>// Учебный проект. Обработчик отчёта "стоимость трудозатрат по проектам за месяц".
+// Код рабочий: на небольшой базе отчёт строится и цифры выглядят правдоподобно.
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using MediatR;
+using MongoDB.Driver;
+
+namespace Demo.Api.Queries.Reports
+{
+    public class ProjectReportRow
+    {
+        public string ProjectId { get; set; }
+        public string ProjectName { get; set; }
+        public double Hours { get; set; }
+        public double Amount { get; set; }
+        public double Budget { get; set; }
+        public double Percent { get; set; }
+        public bool Overspent { get; set; }
+    }
+
+    public class GetProjectReportQuery : IRequest&lt;List&lt;ProjectReportRow&gt;&gt;
+    {
+        public int Year { get; set; }
+        public int Month { get; set; }
+    }
+
+    public class TimesheetReportHandler : IRequestHandler&lt;GetProjectReportQuery, List&lt;ProjectReportRow&gt;&gt;
+    {
+        private readonly IMongoDatabase _db;
+
+        public TimesheetReportHandler(IMongoDatabase db)
+        {
+            _db = db;
+        }
+
+        public async Task&lt;List&lt;ProjectReportRow&gt;&gt; Handle(GetProjectReportQuery request, CancellationToken token)
+        {
+            var entries = await _db.GetCollection&lt;TimeEntry&gt;("time_entries")
+                .Find(FilterDefinition&lt;TimeEntry&gt;.Empty)
+                .ToListAsync();
+
+            var monthEntries = entries
+                .Where(e =&gt; e.Date.Year == request.Year &amp;&amp; e.Date.Month == request.Month)
+                .ToList();
+
+            var rows = new Dictionary&lt;string, ProjectReportRow&gt;();
+
+            foreach (var entry in monthEntries)
+            {
+                var employee = _db.GetCollection&lt;Employee&gt;("employees")
+                    .Find(e =&gt; e.Id == entry.EmployeeId)
+                    .FirstOrDefaultAsync().Result;
+
+                var rate = employee.Rates.FirstOrDefault().Value;
+
+                var amount = Math.Round(entry.Hours * rate, 2);
+
+                if (!rows.ContainsKey(entry.ProjectId))
+                {
+                    var project = await _db.GetCollection&lt;Project&gt;("projects")
+                        .Find(p =&gt; p.Id == entry.ProjectId)
+                        .FirstOrDefaultAsync();
+
+                    rows[entry.ProjectId] = new ProjectReportRow
+                    {
+                        ProjectId = project.Id,
+                        ProjectName = project.Name,
+                        Budget = project.Budget
+                    };
+                }
+
+                rows[entry.ProjectId].Hours += entry.Hours;
+                rows[entry.ProjectId].Amount += amount;
+            }
+
+            foreach (var row in rows.Values)
+            {
+                row.Percent = Math.Round(row.Amount / row.Budget * 100, 2);
+                row.Overspent = row.Percent &gt; 100;
+            }
+
+            return rows.Values.OrderBy(r =&gt; r.ProjectName).ToList();
+        }
+    }
+
+    // --- сущности (упрощённо) ---
+
+    public class TimeEntry
+    {
+        public string Id { get; set; }
+        public string EmployeeId { get; set; }
+        public string ProjectId { get; set; }
+        public DateTime Date { get; set; }
+        public double Hours { get; set; }
+        public string Comment { get; set; }
+    }
+
+    public class Employee
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public List&lt;Rate&gt; Rates { get; set; }
+    }
+
+    public class Rate
+    {
+        public DateTime From { get; set; }
+        public double Value { get; set; }
+    }
+
+    public class Project
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public double Budget { get; set; }
+    }
+}</code></pre>
+</details>
+
+<details open>
+<summary>TimeEntriesPage.tsx — экран «Табель»</summary>
+<pre><code>// Учебный проект. Экран "Табель": список записей за месяц с фильтрами и добавлением.
+// Код рабочий: записи отображаются, добавление работает.
+
+import React, { useState, useEffect } from "react";
+
+interface Props {
+    year: number;
+    month: number;
+}
+
+export const TimeEntriesPage = (props: Props) =&gt; {
+    const [entries, setEntries] = useState&lt;any[]&gt;([]);
+    const [employees, setEmployees] = useState&lt;any[]&gt;([]);
+    const [employeeId, setEmployeeId] = useState("");
+    const [hours, setHours] = useState("");
+    const [date, setDate] = useState("");
+    const [projectId, setProjectId] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() =&gt; {
+        load();
+    });
+
+    useEffect(() =&gt; {
+        fetch("/api/employees")
+            .then((r) =&gt; r.json())
+            .then((data) =&gt; setEmployees(data));
+    }, []);
+
+    const load = async () =&gt; {
+        setLoading(true);
+        const response = await fetch("/api/time-entries?year=" + props.year + "&amp;month=" + props.month);
+        const data = await response.json();
+        setEntries(data);
+        setLoading(false);
+    };
+
+    const filtered = employeeId ? entries.filter((e) =&gt; e.employeeId == employeeId) : entries;
+
+    let total = 0;
+    for (let i = 0; i &lt; filtered.length; i++) {
+        total = total + parseFloat(filtered[i].amount);
+    }
+
+    const save = async () =&gt; {
+        const body = {
+            employeeId: employeeId,
+            projectId: projectId,
+            date: new Date(date).toLocaleDateString(),
+            hours: hours,
+            };
+
+        await fetch("/api/time-entries", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+
+        entries.push(body);
+        setEntries(entries);
+        alert("Сохранено");
+    };
+
+    const remove = async (id: string) =&gt; {
+        await fetch("/api/time-entries/" + id, { method: "DELETE" });
+        load();
+    };
+
+    return (
+        &lt;div style={{ padding: 20 }}&gt;
+            &lt;h2&gt;Табель за {props.month}.{props.year}&lt;/h2&gt;
+
+            &lt;select value={employeeId} onChange={(e) =&gt; setEmployeeId(e.target.value)}&gt;
+                &lt;option value=""&gt;Все сотрудники&lt;/option&gt;
+                {employees.map((emp, index) =&gt; (
+                    &lt;option key={index} value={emp.id}&gt;
+                        {emp.name}
+                    &lt;/option&gt;
+                ))}
+            &lt;/select&gt;
+
+            &lt;div style={{ marginTop: 20 }}&gt;
+                &lt;input placeholder="Дата" value={date} onChange={(e) =&gt; setDate(e.target.value)} /&gt;
+                &lt;input placeholder="Проект" value={projectId} onChange={(e) =&gt; setProjectId(e.target.value)} /&gt;
+                &lt;input placeholder="Часы" value={hours} onChange={(e) =&gt; setHours(e.target.value)} /&gt;
+                &lt;button onClick={save}&gt;Добавить&lt;/button&gt;
+            &lt;/div&gt;
+
+            {loading &amp;&amp; &lt;div&gt;Загрузка...&lt;/div&gt;}
+
+            &lt;table style={{ marginTop: 20, width: "100%" }}&gt;
+                &lt;tbody&gt;
+                    {filtered.map((entry, index) =&gt; (
+                        &lt;tr key={index}&gt;
+                            &lt;td&gt;{entry.date}&lt;/td&gt;
+                            &lt;td&gt;{entry.employeeName}&lt;/td&gt;
+                            &lt;td&gt;{entry.projectName}&lt;/td&gt;
+                            &lt;td&gt;{entry.hours}&lt;/td&gt;
+                            &lt;td&gt;{entry.amount.toFixed(2)}&lt;/td&gt;
+                            &lt;td&gt;
+                                &lt;button onClick={() =&gt; remove(entry.id)}&gt;Удалить&lt;/button&gt;
+                            &lt;/td&gt;
+                        &lt;/tr&gt;
+                    ))}
+                &lt;/tbody&gt;
+            &lt;/table&gt;
+
+            &lt;div style={{ marginTop: 10 }}&gt;Итого: {total.toFixed(2)} руб.&lt;/div&gt;
+        &lt;/div&gt;
+    );
+};</code></pre>
+</details>
+
+<h2><span class="part-mark">Часть 2 · 4–6 часов</span>Мини-фича end-to-end</h2>
+
+<p>Отдельный маленький проект на том же стеке — <strong>учёт трудозатрат и стоимость работ по проектам</strong>.</p>
+
+<h3>Домен</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Сущность</th><th>Поля</th></tr></thead>
+<tbody>
+<tr><td class="mono">Employee<br>сотрудник</td><td>ФИО, отдел; история часовых ставок — список пар «ставка, действует с даты». Ставка действует с указанной даты до начала следующей. Ставки задаются заранее, меняются редко, но <strong>задним числом их менять можно</strong>.</td></tr>
+<tr><td class="mono">Project<br>проект</td><td>шифр (уникальный, например П-001), название, бюджет в рублях, дата начала и дата окончания. Окончание может отсутствовать — проект бессрочный.</td></tr>
+<tr><td class="mono">TimeEntry<br>запись табеля</td><td>сотрудник, проект, дата, количество часов, комментарий; служебные поля на ваше усмотрение — кто и когда создал или изменил, версия записи.</td></tr>
+<tr><td class="mono">ClosedPeriod<br>закрытый период</td><td>год и месяц, закрытые для редактирования: их закрывает бухгалтерия.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Бизнес-правила</h3>
+
+<ol>
+<li><strong>Стоимость записи = часы × ставка сотрудника, действовавшая на дату записи</strong> — не текущая. Если на дату записи у сотрудника ещё нет ни одной ставки, запись создать нельзя.</li>
+<li>Суммарно у сотрудника <strong>за один календарный день по всем проектам не больше 24 часов</strong>. Попытка выйти за лимит — ошибка с внятным текстом.</li>
+<li>Если за день у сотрудника получилось <strong>больше 12 часов</strong>, запись сохраняется, но день помечается как переработка, и флаг виден в интерфейсе.</li>
+<li>В <strong>закрытом периоде</strong> записи нельзя создавать, изменять и удалять.</li>
+<li>Дата записи должна попадать в <strong>период проекта</strong>: не раньше даты начала и не позже даты окончания, если она задана.</li>
+<li>Часы — положительные, <strong>кратные 0,5</strong>, не больше 24 за одну запись.</li>
+<li>Деньги — <code>decimal</code>, округление до копеек. <code>double</code> и <code>float</code> для денег не использовать.</li>
+<li><strong>Конкурентное редактирование:</strong> если запись изменили после того, как её открыли на редактирование, сохранение завершается понятной ошибкой, а не молча затирает чужие изменения.</li>
+</ol>
+
+<h3>API</h3>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th>Метод</th><th class="mono">Путь</th><th>Назначение</th></tr></thead>
+<tbody>
+<tr><td class="mono method">GET</td><td class="mono">/api/time-entries</td><td>постраничный список за месяц с фильтрами <code>year</code>, <code>month</code>, <code>employeeId</code>, <code>projectId</code>, <code>page</code>, <code>pageSize</code>; в ответе — ФИО, шифр проекта, часы, применённая ставка, стоимость</td></tr>
+<tr><td class="mono method">PUT</td><td class="mono">/api/time-entries</td><td>создать запись</td></tr>
+<tr><td class="mono method">POST</td><td class="mono">/api/time-entries/{id}</td><td>изменить запись</td></tr>
+<tr><td class="mono method">DELETE</td><td class="mono">/api/time-entries/{id}</td><td>удалить запись</td></tr>
+<tr><td class="mono method">GET</td><td class="mono">/api/reports/projects</td><td>отчёт по проектам за месяц: <code>year</code>, <code>month</code></td></tr>
+<tr><td class="mono method">GET</td><td class="mono">/api/employees<br>/api/projects</td><td>справочники для выпадающих списков</td></tr>
+<tr><td class="mono method">POST</td><td class="mono">/api/periods/close<br>/api/periods/open</td><td>закрыть и открыть месяц</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><strong>Отчёт по проектам за месяц</strong> возвращает по каждому проекту, где были трудозатраты: часы, стоимость, бюджет, процент освоения бюджета, признак перерасхода (больше 100&nbsp;%) и признак риска (больше 80&nbsp;%), плюс итоговую строку.</p>
+
+<h4>Требования к реализации</h4>
+
+<ul>
+<li>Отчёт считается <strong>агрегацией на стороне MongoDB</strong>. Выгружать все записи в память и складывать в C# нельзя: считайте, что записей несколько миллионов.</li>
+<li>Список записей — с реальной пагинацией на стороне БД.</li>
+<li>Индексы под используемые запросы созданы явно — скриптом, миграцией или на старте — и кратко обоснованы в <code>NOTES.md</code>.</li>
+<li>Ошибки бизнес-правил — это <code>400</code> или <code>409</code> с машиночитаемым кодом и человекочитаемым текстом на русском, а не <code>500</code> и не голый текст исключения.</li>
+</ul>
+
+<h3>Интерфейс</h3>
+
+<div class="cols">
+<div>
+<h4>Экран 1 — Табель</h4>
+<ul>
+<li>фильтры: месяц, сотрудник, проект;</li>
+<li>таблица: дата, сотрудник, проект, часы, ставка, стоимость, комментарий, отметка переработки;</li>
+<li>добавление, редактирование и удаление записи — форма в модальном окне;</li>
+<li>ошибки валидации с сервера видит пользователь, а не только консоль;</li>
+<li>итоги по отфильтрованному списку: часы и стоимость.</li>
+</ul>
+</div>
+<div>
+<h4>Экран 2 — Отчёт по проектам</h4>
+<ul>
+<li>выбор месяца;</li>
+<li>таблица: проект, часы, стоимость, бюджет, процент освоения, подсветка перерасхода;</li>
+<li>итоговая строка.</li>
+</ul>
+</div>
+</div>
+
+<p>Управление состоянием — любое: mobx, mobx-state-tree, redux, zustand, react-query. В <code>NOTES.md</code> напишите, почему выбрали именно это. Компонентная библиотека — любая или никакой.</p>
+
+<h3>Технические требования</h3>
+
+<ul>
+<li>Backend на .NET; можно .NET 8 — у нас .NET 5, но переносимость подхода важнее версии. Контроллеры тонкие, бизнес-логика вынесена (MediatR или обычные сервисы — на ваш выбор), валидация входных данных отделена от бизнес-правил.</li>
+<li>MongoDB официальным драйвером. ORM поверх Mongo не использовать.</li>
+<li><strong>Тесты:</strong> минимум пять юнит-тестов на бизнес-правила — выбор ставки по дате, лимит часов за день, закрытый период, границы периода проекта, округление денег.</li>
+<li>Запуск: <code>docker compose up</code> либо README не более чем из пяти шагов. Обязательно — команда или скрипт, наполняющий базу тестовыми данными.</li>
+</ul>
+
+<div class="note">
+<h4>Чего делать не нужно</h4>
+<p>Аутентификации, ролей и прав доступа. Красивой вёрстки, адаптивности, тёмной темы, анимаций. Импорта, экспорта, печатных форм, уведомлений. CI/CD, Kubernetes, микросервисов.</p>
+</div>
+
+<h2>Приёмочные проверки</h2>
+
+<p>Наполните базу этими данными — это и есть требуемые сид-данные — и убедитесь, что результаты совпадают. Проверять мы будем именно их.</p>
+
+<h4>Сотрудники</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>ФИО</th><th>Отдел</th><th>Ставки</th></tr></thead>
+<tbody>
+<tr><td>Иванов И. И.</td><td>Проектный</td><td>500 ₽/ч с 01.01.2026; 600 ₽/ч с 01.03.2026</td></tr>
+<tr><td>Петрова А. С.</td><td>Проектный</td><td>700 ₽/ч с 01.02.2026</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Проекты</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Шифр</th><th>Название</th><th class="num">Бюджет</th><th>Период</th></tr></thead>
+<tbody>
+<tr><td class="mono">П-001</td><td>Реконструкция цеха</td><td class="num">20 000 ₽</td><td>01.01.2026 – 31.03.2026</td></tr>
+<tr><td class="mono">П-002</td><td>Инженерные сети</td><td class="num">5 000 ₽</td><td>с 01.03.2026, без даты окончания</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Записи табеля</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Дата</th><th>Сотрудник</th><th>Проект</th><th class="num">Часы</th><th class="num">Ожидаемая стоимость</th></tr></thead>
+<tbody>
+<tr><td>20.02.2026</td><td>Иванов</td><td class="mono">П-001</td><td class="num">8</td><td class="num">4 000 ₽</td></tr>
+<tr><td>05.03.2026</td><td>Иванов</td><td class="mono">П-001</td><td class="num">8</td><td class="num"><strong>4 800 ₽</strong> — ставка уже 600</td></tr>
+<tr><td>05.03.2026</td><td>Петрова</td><td class="mono">П-001</td><td class="num">4</td><td class="num">2 800 ₽</td></tr>
+<tr><td>06.03.2026</td><td>Петрова</td><td class="mono">П-002</td><td class="num">10</td><td class="num">7 000 ₽</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Отчёт за март 2026</h4>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Проект</th><th class="num">Часы</th><th class="num">Стоимость</th><th class="num">Бюджет</th><th class="num">Освоено</th></tr></thead>
+<tbody>
+<tr><td class="mono">П-001</td><td class="num">12</td><td class="num">7 600 ₽</td><td class="num">20 000 ₽</td><td class="num">38 %</td></tr>
+<tr><td class="mono">П-002</td><td class="num">10</td><td class="num">7 000 ₽</td><td class="num">5 000 ₽</td><td class="num"><span class="flag">140 % — перерасход</span></td></tr>
+<tr class="total"><td>Итого</td><td class="num">22</td><td class="num">14 600 ₽</td><td class="num"></td><td class="num"></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Отчёт за февраль 2026: П-001 — 8 часов, 4 000 ₽, освоено 20 %.</p>
+
+<h4>Сценарии с ошибками</h4>
+
+<p>Каждый должен давать понятное сообщение в интерфейсе, а не «500» и не молчание.</p>
+
+<ol>
+<li>Запись Петровой на 15.01.2026 — на эту дату у неё ещё нет ставки.</li>
+<li>Запись Иванову 06.03.2026, 20 часов на П-001 — сохраняется, помечается как переработка.</li>
+<li>Следом ещё одна запись Иванову 06.03.2026, 6 часов — суммарно 26 часов за день, отказ.</li>
+<li>Запись на П-002 датой 20.02.2026 — раньше начала проекта, отказ.</li>
+<li>Закрыть февраль 2026 и попробовать изменить запись от 20.02.2026 — отказ.</li>
+<li>Часы <code>0</code> или <code>3,7</code> — ошибка валидации прямо в форме.</li>
+<li>Открыть одну и ту же запись в двух вкладках, сохранить в первой, затем во второй — вторая получает внятный отказ.</li>
+<li>Изменить ставку Иванова с 01.03.2026 на 650 ₽ и перестроить отчёт за март: стоимость записи от 05.03.2026 становится 5 200 ₽.</li>
+</ol>
+
+<h2>Что прислать</h2>
+
+<p>Ссылку на репозиторий — GitHub или GitLab, публичный или доступ по приглашению. В нём:</p>
+
+<div class="table-wrap">
+<table>
+<tbody>
+<tr><td class="mono">README.md</td><td>как запустить за пять шагов и как загрузить тестовые данные</td></tr>
+<tr><td class="mono">REVIEW.md</td><td>ответ по части 1</td></tr>
+<tr><td class="mono">NOTES.md</td><td>принятые допущения, объяснение выбранных решений, обоснование индексов, что осознанно не доделано и что сделали бы иначе, будь времени вдвое больше</td></tr>
+<tr><td class="mono">код и тесты</td><td>история коммитов — не «одним коммитом»</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Дальше — созвон на час: пройдёмся по вашему коду, по вашему ревью и по паре вопросов «а как бы вы это масштабировали».</p>
+
+<footer>
+Вопросы по заданию — на почту, с которой вы его получили. Спрашивать можно на любом этапе.
+</footer>
+
+</article>
+
+<style>
+@page { size: A4; margin: 14mm 12mm; }
+@media print {
+    /* печатаем всегда в светлой теме: селекторы должны перебивать
+       :root:not([data-theme="light"]) из основной таблицы стилей */
+    :root,
+    :root:not([data-theme="light"]),
+    :root[data-theme="dark"] {
+        --paper: #ffffff;
+        --sheet: #ffffff;
+        --ink: #16243a;
+        --ink-soft: #3f4f66;
+        --ink-faint: #6b7a90;
+        --rule: #b9c4d2;
+        --rule-soft: #dde4ec;
+        --blueprint: #23496e;
+        --accent: #b35d12;
+        --accent-soft: #fbf1e6;
+        --code-bg: #f2f5f8;
+    }
+    body { padding: 0; font-size: 11.5pt; }
+    .sheet { max-width: none; border: none; padding: 0; }
+    .stamp { margin: 0; }
+    .stamp-head, .stamp-cell { padding-left: 0; padding-right: 0; }
+    h2 { break-after: avoid; page-break-after: avoid; margin-top: 26px; }
+    h3, h4 { break-after: avoid; page-break-after: avoid; }
+    tr, li, .note { break-inside: avoid; page-break-inside: avoid; }
+    summary::after, details[open] summary::after { content: none; }
+    summary { color: var(--ink-faint); }
+    pre { max-height: none; overflow: visible; white-space: pre-wrap; word-break: break-word; font-size: 8.6pt; line-height: 1.5; }
+    details { break-inside: auto; page-break-inside: auto; }
+    .table-wrap { overflow: visible; }
+    footer { margin-top: 32px; }
+}
+</style>
+
+</body>
+</html>
