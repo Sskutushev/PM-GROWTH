@@ -27,7 +27,7 @@ public static class TimeEntryEndpoints
             .Produces<TimeEntry>();
 
         group.MapDelete("/{id}", Delete)
-            .WithSummary("Удалить запись")
+            .WithSummary("Удалить запись (требуется version)")
             .Produces(StatusCodes.Status204NoContent);
 
         return api;
@@ -70,9 +70,11 @@ public static class TimeEntryEndpoints
         CancellationToken ct) =>
         service.Update(id, request, ct);
 
+    // The version is a required parameter: deleting without one would be the single write in the
+    // API able to overwrite somebody else's edit. A missing one is a 400, not a silent delete.
     private static async Task<IResult> Delete(
         string id,
-        long? version,
+        long version,
         TimesheetService service,
         CancellationToken ct)
     {

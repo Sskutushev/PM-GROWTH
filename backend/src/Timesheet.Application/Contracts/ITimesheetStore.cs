@@ -43,7 +43,11 @@ public interface ITimesheetStore
     /// </summary>
     Task<TimeEntry?> Replace(TimeEntry entry, long expectedVersion, CancellationToken cancellationToken);
 
-    Task<bool> Delete(string id, long? expectedVersion, CancellationToken cancellationToken);
+    /// <summary>
+    /// Delete matched on <c>(_id, expectedVersion)</c>. The version is required: a delete that
+    /// skipped it would be the one write able to walk past optimistic concurrency.
+    /// </summary>
+    Task<bool> Delete(string id, long expectedVersion, CancellationToken cancellationToken);
 
     Task<PagedResult<TimeEntryView>> List(TimeEntryQuery query, CancellationToken cancellationToken);
 

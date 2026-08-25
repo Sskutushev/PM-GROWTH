@@ -124,14 +124,9 @@ internal sealed class InMemoryTimesheetStore : ITimesheetStore
         return Task.FromResult<TimeEntry?>(entry);
     }
 
-    public Task<bool> Delete(string id, long? expectedVersion, CancellationToken ct)
+    public Task<bool> Delete(string id, long expectedVersion, CancellationToken ct)
     {
-        if (!entries.TryGetValue(id, out var stored))
-        {
-            return Task.FromResult(false);
-        }
-
-        if (expectedVersion is not null && stored.Version != expectedVersion)
+        if (!entries.TryGetValue(id, out var stored) || stored.Version != expectedVersion)
         {
             return Task.FromResult(false);
         }
