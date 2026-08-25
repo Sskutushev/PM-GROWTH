@@ -307,7 +307,7 @@ public sealed class TimesheetServiceTests
     {
         var (service, _) = Build();
 
-        var error = await Assert.ThrowsAsync<DomainException>(() => service.Delete("missing", null, default));
+        var error = await Assert.ThrowsAsync<DomainException>(() => service.Delete("missing", 1, default));
 
         Assert.Equal(ErrorCodes.TimeEntryNotFound, error.Code);
         Assert.Equal(404, error.Status);

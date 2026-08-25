@@ -95,7 +95,7 @@ public sealed class TimesheetService(
                 "Запись уже изменена другим пользователем. Перечитайте данные и повторите попытку.");
     }
 
-    public async Task Delete(string id, long? version, CancellationToken token)
+    public async Task Delete(string id, long version, CancellationToken token)
     {
         var entry = await store.GetEntry(id, token)
             ?? throw DomainException.NotFound(ErrorCodes.TimeEntryNotFound, "Запись табеля не найдена.");

@@ -11,5 +11,9 @@ internal static class MongoCollections
     internal const string Projects = "projects";
     internal const string ClosedPeriods = "closed_periods";
 
-    internal static IReadOnlyList<string> All { get; } = [TimeEntries, Employees, Projects, ClosedPeriods];
+    /// <summary>Per-employee daily totals: the document every write of a day contends on.</summary>
+    internal const string DailyHours = "daily_hours";
+
+    internal static IReadOnlyList<string> All { get; } =
+        [TimeEntries, Employees, Projects, ClosedPeriods, DailyHours];
 }

@@ -135,9 +135,22 @@ public sealed class MongoTimesheetStore : ITimesheetStore
         return totals.Count == 0 ? 0m : MongoMapping.Decimal(totals[0]["total"]);
     }
 
+    // Every write of an entry books its hours in the daily guard inside the same transaction.
+    // The application checks the daily cap first and produces the readable error; the guard is
+    // what makes the rule hold when two requests race, and it is the only thing that can.
+
     public async Task<TimeEntry> Insert(TimeEntry entry, CancellationToken ct)
     {
-        await Entries.InsertOneAsync(MongoMapping.Entry(entry), cancellationToken: ct);
+        await InTransaction(async session =>
+        {
+            await MongoDailyHoursGuard.Reserve(database, session, entry, ct);
+            await Entries.InsertOneAsync(session, MongoMapping.Entry(entry), cancellationToken: ct);
+        },
+        entry.EmployeeId,
+        entry.Date,
+        entry.Hours,
+        ct);
+
         return entry;
     }
 
@@ -147,22 +160,110 @@ public sealed class MongoTimesheetStore : ITimesheetStore
         var filter = Builders<BsonDocument>.Filter.Eq("_id", entry.Id)
             & Builders<BsonDocument>.Filter.Eq("version", expectedVersion);
 
-        var result = await Entries.ReplaceOneAsync(filter, MongoMapping.Entry(entry), cancellationToken: ct);
+        TimeEntry? replaced = null;
 
-        return result.MatchedCount == 1 ? entry : null;
+        await InTransaction(async session =>
+        {
+            var current = await Entries.Find(session, filter).FirstOrDefaultAsync(ct);
+
+            if (current is null)
+            {
+                // Somebody else got there first: the caller turns this into a 409.
+                replaced = null;
+                return;
+            }
+
+            // Release what the entry used to hold before booking what it holds now: the day may
+            // be the same one, and then both operations land on the same guard document.
+            await MongoDailyHoursGuard.Release(database, session, MongoMapping.Entry(current), ct);
+            await MongoDailyHoursGuard.Reserve(database, session, entry, ct);
+
+            var result = await Entries.ReplaceOneAsync(
+                session,
+                filter,
+                MongoMapping.Entry(entry),
+                cancellationToken: ct);
+
+            replaced = result.MatchedCount == 1 ? entry : null;
+        },
+        entry.EmployeeId,
+        entry.Date,
+        entry.Hours,
+        ct);
+
+        return replaced;
     }
 
-    public async Task<bool> Delete(string id, long? expectedVersion, CancellationToken ct)
+    public async Task<bool> Delete(string id, long expectedVersion, CancellationToken ct)
     {
-        var filter = Builders<BsonDocument>.Filter.Eq("_id", id);
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", id)
+            & Builders<BsonDocument>.Filter.Eq("version", expectedVersion);
 
-        if (expectedVersion is not null)
+        var deleted = false;
+
+        await InTransaction(async session =>
         {
-            filter &= Builders<BsonDocument>.Filter.Eq("version", expectedVersion);
-        }
+            var current = await Entries.Find(session, filter).FirstOrDefaultAsync(ct);
 
-        var result = await Entries.DeleteOneAsync(filter, ct);
-        return result.DeletedCount == 1;
+            if (current is null)
+            {
+                deleted = false;
+                return;
+            }
+
+            var entry = MongoMapping.Entry(current);
+            await MongoDailyHoursGuard.Release(database, session, entry, ct);
+
+            var result = await Entries.DeleteOneAsync(session, filter, cancellationToken: ct);
+            deleted = result.DeletedCount == 1;
+        },
+        employeeId: null,
+        date: null,
+        hours: 0m,
+        ct);
+
+        return deleted;
+    }
+
+    /// <summary>
+    /// Runs the writes in one transaction. <see cref="IClientSessionHandle.WithTransactionAsync{T}"/>
+    /// retries the transient conflicts two racing writers on the same day produce; a full day is
+    /// not transient, so it is translated into the domain error the client already knows.
+    /// </summary>
+    private async Task InTransaction(
+        Func<IClientSessionHandle, Task> writes,
+        string? employeeId,
+        DateOnly? date,
+        decimal hours,
+        CancellationToken ct)
+    {
+        using var session = await client.StartSessionAsync(cancellationToken: ct);
+
+        try
+        {
+            await session.WithTransactionAsync(
+                async (handle, token) =>
+                {
+                    await writes(handle);
+                    return true;
+                },
+                cancellationToken: ct);
+        }
+        catch (MongoDailyHoursGuard.DayIsFullException)
+        {
+            // Re-read outside the aborted transaction so the message carries real numbers.
+            var alreadyLogged = employeeId is null || date is null
+                ? WorkHoursPolicy.DailyLimit
+                : await GetDailyHours(employeeId, date.Value, null, ct);
+
+            WorkHoursPolicy.EnsureDailyLimit(alreadyLogged, hours);
+
+            // The competing write was rolled back between the abort and the re-read, so the day
+            // has room again. Saying so beats pretending the request succeeded.
+            throw DomainException.Conflict(
+                ErrorCodes.ConcurrencyConflict,
+                "Запись за этот день изменялась одновременно. Повторите операцию.");
+        }
     }
 
     public async Task<PagedResult<TimeEntryView>> List(TimeEntryQuery query, CancellationToken ct)
@@ -304,7 +405,13 @@ public sealed class MongoTimesheetStore : ITimesheetStore
 
         var aggregates = await Entries.Aggregate<BsonDocument>(pipeline).ToListAsync(ct);
 
-        var projects = (await Projects_.Find(FilterDefinition<BsonDocument>.Empty).ToListAsync(ct))
+        // Only the projects the month actually touched: a catalogue of ten years of history is
+        // not worth reading to describe a report of five rows.
+        var projectIds = aggregates.Select(x => x["_id"].AsString).ToArray();
+
+        var projects = (await Projects_
+                .Find(Builders<BsonDocument>.Filter.In<string>("_id", projectIds))
+                .ToListAsync(ct))
             .ToDictionary(x => x["_id"].AsString, MongoMapping.Project);
 
         var rows = aggregates
@@ -399,37 +506,35 @@ public sealed class MongoTimesheetStore : ITimesheetStore
     {
         using var session = await client.StartSessionAsync(cancellationToken: ct);
 
-        session.StartTransaction();
-
-        try
-        {
-            await Employees_.UpdateOneAsync(
-                session,
-                new BsonDocument("_id", employeeId),
-                new BsonDocument("$set", new BsonDocument("rates", MongoMapping.Rates(rates))),
-                cancellationToken: ct);
-
-            if (writes.Count > 0)
+        // Recalculation touches the same entries an editor may be saving, so the transaction is
+        // run through WithTransactionAsync: transient write conflicts are retried, and the
+        // version conflict below stays a real answer rather than a retry loop.
+        await session.WithTransactionAsync(
+            async (handle, token) =>
             {
-                var result = await Entries.BulkWriteAsync(session, writes, cancellationToken: ct);
+                await Employees_.UpdateOneAsync(
+                    handle,
+                    new BsonDocument("_id", employeeId),
+                    new BsonDocument("$set", new BsonDocument("rates", MongoMapping.Rates(rates))),
+                    cancellationToken: token);
 
-                // The filters pin the version each entry had when it was priced, so a mismatch means
-                // somebody edited an entry while the recalculation was running.
-                if (result.MatchedCount != writes.Count)
+                if (writes.Count > 0)
                 {
-                    throw DomainException.Conflict(
-                        ErrorCodes.ConcurrencyConflict,
-                        "Записи изменились во время пересчёта. Повторите операцию.");
-                }
-            }
+                    var result = await Entries.BulkWriteAsync(handle, writes, cancellationToken: token);
 
-            await session.CommitTransactionAsync(ct);
-        }
-        catch
-        {
-            await session.AbortTransactionAsync(CancellationToken.None);
-            throw;
-        }
+                    // The filters pin the version each entry had when it was priced, so a mismatch
+                    // means somebody edited an entry while the recalculation was running.
+                    if (result.MatchedCount != writes.Count)
+                    {
+                        throw DomainException.Conflict(
+                            ErrorCodes.ConcurrencyConflict,
+                            "Записи изменились во время пересчёта. Повторите операцию.");
+                    }
+                }
+
+                return true;
+            },
+            cancellationToken: ct);
     }
 
     private async Task<HashSet<(int Year, int Month)>> ClosedPeriodKeys(CancellationToken ct)
@@ -533,6 +638,9 @@ public sealed class MongoTimesheetStore : ITimesheetStore
         });
 
         await Entries.InsertManyAsync(documents, cancellationToken: ct);
+
+        // The daily guard is derived from the entries, so it is recomputed rather than seeded.
+        await MongoDailyHoursGuard.Rebuild(database, ct);
     }
 
     public Task EnsureIndexes(CancellationToken ct) => MongoIndexCatalog.EnsureAsync(database, ct);

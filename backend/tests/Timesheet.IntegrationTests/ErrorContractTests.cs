@@ -98,10 +98,21 @@ public sealed class ErrorContractTests(ApiFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task Unknown_entry_is_a_404_with_a_code()
     {
-        var response = await fixture.Client.DeleteAsync("/api/time-entries/does-not-exist");
+        var response = await fixture.Client.DeleteAsync("/api/time-entries/does-not-exist?version=1");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("TIME_ENTRY_NOT_FOUND", (await ReadProblem(response)).Code);
+    }
+
+    [Fact]
+    public async Task Delete_without_a_version_is_rejected()
+    {
+        // Optimistic concurrency has no hole to walk through: a delete has to name the version
+        // it saw, and a missing one is a contract error rather than an unconditional delete.
+        var response = await fixture.Client.DeleteAsync("/api/time-entries/does-not-exist");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("VALIDATION_FAILED", (await ReadProblem(response)).Code);
     }
 
     [Fact]
