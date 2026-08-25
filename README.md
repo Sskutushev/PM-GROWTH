@@ -22,11 +22,14 @@ make test     # backend и frontend tests
 
 Ожидаемый март: П-001 — 12 ч / 7 600 ₽ / 38%; П-002 — 10 ч / 7 000 ₽ / 140%; итог — 22 ч / 14 600 ₽.
 
+В CI те же проверки разложены в цепочки: frontend — install → format → lint → typecheck → test → build; backend — restore → format → build → unit → integration → index lifecycle; отдельно semgrep и проверка языка комментариев. Красный прогон сразу показывает стадию.
+
 ## Навигация
 
 - [REVIEW.md](REVIEW.md) — 42 проблемы исходного кода по приоритетам.
 - [NOTES.md](NOTES.md) — допущения и инженерные решения.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — слои и поток данных.
+- [SCALING.md](SCALING.md) — что делать, когда данных станет на порядки больше.
 - [AI-USAGE.md](AI-USAGE.md) — применение и критическая проверка ИИ.
 
 Оригинальное задание сохранено в `test-task.pdf`; эталонные файлы для code review — в `code-review/`.
