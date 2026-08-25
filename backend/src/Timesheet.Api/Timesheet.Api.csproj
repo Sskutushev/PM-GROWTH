@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup><NoWarn>$(NoWarn);CA1050;CA1848</NoWarn></PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup><PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Timesheet.Application\Timesheet.Application.csproj" />
+    <ProjectReference Include="..\Timesheet.Infrastructure\Timesheet.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

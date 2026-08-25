@@ -1,0 +1,10 @@
+.git
+.github
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/TestResults
+test-task.pdf
+test-task.html
+code-review

@@ -1,0 +1,31 @@
+rules:
+  - id: csharp-sync-over-async
+    languages: [csharp]
+    message: Sync-over-async can exhaust the thread pool.
+    severity: ERROR
+    patterns: [{pattern-regex: "\\.(Result|Wait\\(\\))"}]
+  - id: csharp-load-all-mongo
+    languages: [csharp]
+    message: Never load an unfiltered Mongo collection into application memory.
+    severity: ERROR
+    pattern-regex: "Entries\\.Find\\(FilterDefinition<.*>\\.Empty\\).*ToListAsync"
+  - id: csharp-money-double
+    languages: [csharp]
+    message: Monetary values must use decimal/Decimal128.
+    severity: ERROR
+    pattern-regex: "double\\s+(Amount|Budget|Rate|Price|Cost)"
+  - id: react-any-array
+    languages: [typescript]
+    message: Model API data explicitly; do not erase its type.
+    severity: ERROR
+    pattern-regex: "useState<any\\[\\]>"
+  - id: react-state-mutation
+    languages: [typescript]
+    message: React state must be updated immutably.
+    severity: ERROR
+    pattern-regex: "\\.push\\(.*\\);\\s*set[A-Z]"
+  - id: locale-date-api
+    languages: [typescript]
+    message: API dates must use YYYY-MM-DD, never locale-dependent strings.
+    severity: ERROR
+    pattern: $DATE.toLocaleDateString(...)
