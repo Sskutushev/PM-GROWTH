@@ -43,8 +43,8 @@ public sealed class MongoTimesheetStore : ITimesheetStore
     {
         var range = MonthRange.Create(query.Year, query.Month);
         var filter = Builders<BsonDocument>.Filter.Gte("date", MongoMapping.ToUtc(range.Start)) & Builders<BsonDocument>.Filter.Lt("date", MongoMapping.ToUtc(range.EndExclusive));
-        if (query.EmployeeId is not null) filter &= Builders<BsonDocument>.Filter.Eq("employeeId", query.EmployeeId);
-        if (query.ProjectId is not null) filter &= Builders<BsonDocument>.Filter.Eq("projectId", query.ProjectId);
+        if (!string.IsNullOrWhiteSpace(query.EmployeeId)) filter &= Builders<BsonDocument>.Filter.Eq("employeeId", query.EmployeeId);
+        if (!string.IsNullOrWhiteSpace(query.ProjectId)) filter &= Builders<BsonDocument>.Filter.Eq("projectId", query.ProjectId);
         var totalCount = await Entries.CountDocumentsAsync(filter, cancellationToken: ct);
         var docs = await Entries.Find(filter).Sort(Builders<BsonDocument>.Sort.Descending("date").Descending("_id")).Skip((query.Page - 1) * query.PageSize).Limit(query.PageSize).ToListAsync(ct);
         var totals = await Entries.Aggregate().Match(filter).Group(new BsonDocument { ["_id"] = BsonNull.Value, ["hours"] = new BsonDocument("$sum", "$hours"), ["amount"] = new BsonDocument("$sum", "$amount") }).ToListAsync(ct);

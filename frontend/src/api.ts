@@ -74,7 +74,7 @@ export const api = {
     projectId: string,
   ) =>
     request<Page>(
-      `/time-entries?year=${year}&month=${month}&employeeId=${employeeId}&projectId=${projectId}&page=1&pageSize=50`,
+      `/time-entries?${new URLSearchParams({ year: String(year), month: String(month), page: "1", pageSize: "50", ...(employeeId ? { employeeId } : {}), ...(projectId ? { projectId } : {}) })}`,
     ),
   employees: () => request<Lookup[]>("/employees"),
   projects: () => request<Lookup[]>("/projects"),

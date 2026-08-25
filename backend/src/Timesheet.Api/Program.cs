@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
+using System.Text.Json;
 using Timesheet.Application;
 using Timesheet.Application.Contracts;
 using Timesheet.Domain.Errors;
@@ -41,12 +42,13 @@ public sealed class ProblemDetailsMiddleware(RequestDelegate next, ILogger<Probl
             context.Response.StatusCode = exception.Status; context.Response.ContentType = "application/problem+json";
             var problem = new ProblemDetails { Status = exception.Status, Title = exception.Message, Type = $"https://pm-growth.dev/problems/{exception.Code.ToLowerInvariant()}", Instance = context.Request.Path };
             problem.Extensions["code"] = exception.Code; problem.Extensions["details"] = exception.Details; problem.Extensions["traceId"] = context.TraceIdentifier;
-            await context.Response.WriteAsJsonAsync(problem, context.RequestAborted);
+            await context.Response.WriteAsync(JsonSerializer.Serialize(problem), context.RequestAborted);
         }
         catch (Exception exception)
         {
             logger.LogError(exception, "Unhandled error {TraceId}", context.TraceIdentifier); context.Response.StatusCode = 500; context.Response.ContentType = "application/problem+json";
-            await context.Response.WriteAsJsonAsync(new ProblemDetails { Status = 500, Title = "Внутренняя ошибка. Обратитесь в поддержку с идентификатором запроса.", Extensions = { ["code"] = "INTERNAL_ERROR", ["traceId"] = context.TraceIdentifier } }, context.RequestAborted);
+            var problem = new ProblemDetails { Status = 500, Title = "Внутренняя ошибка. Обратитесь в поддержку с идентификатором запроса.", Extensions = { ["code"] = "INTERNAL_ERROR", ["traceId"] = context.TraceIdentifier } };
+            await context.Response.WriteAsync(JsonSerializer.Serialize(problem), context.RequestAborted);
         }
     }
 }

@@ -23,6 +23,12 @@ public sealed class AcceptanceScenarios : IAsyncLifetime
         Assert.Contains(report.Items, x => x.ProjectCode == "П-002" && x.Amount == 7_000m && x.Percent == 140m && x.IsOverspent);
     }
     [Fact]
+    public async Task Empty_optional_filters_do_not_hide_month_entries()
+    {
+        var page = await Client.GetFromJsonAsync<PagedResult<TimeEntryView>>("/api/time-entries?year=2026&month=3&employeeId=&projectId=&page=1&pageSize=50");
+        Assert.NotNull(page); Assert.Equal(3, page.TotalCount); Assert.Equal(22m, page.TotalHours); Assert.Equal(14_600m, page.TotalAmount);
+    }
+    [Fact]
     public async Task Scenario_1_Petrova_before_first_rate_returns_RATE_NOT_FOUND()
     {
         var response = await Client.PutAsJsonAsync("/api/time-entries", new SaveTimeEntryRequest("petrova", "p001", new(2026, 1, 15), 1m, ""));

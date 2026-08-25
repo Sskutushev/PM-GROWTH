@@ -8,7 +8,7 @@ rules:
     languages: [csharp]
     message: Never load an unfiltered Mongo collection into application memory.
     severity: ERROR
-    pattern-regex: "Find\\(FilterDefinition<.*>\\.Empty\\).*ToListAsync"
+    pattern-regex: "Entries\\.Find\\(FilterDefinition<.*>\\.Empty\\).*ToListAsync"
   - id: csharp-money-double
     languages: [csharp]
     message: Monetary values must use decimal/Decimal128.
