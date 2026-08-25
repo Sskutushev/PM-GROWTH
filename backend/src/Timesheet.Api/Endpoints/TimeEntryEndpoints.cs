@@ -5,9 +5,8 @@ using Timesheet.Domain.Models;
 namespace Timesheet.Api.Endpoints;
 
 /// <summary>
-/// Маршруты табеля. Эндпоинт делает ровно три вещи: принимает параметры,
-/// вызывает прикладной сервис и выбирает HTTP-статус успеха.
-/// Ни валидации, ни бизнес-правил, ни работы с БД здесь нет.
+/// Timesheet routes. An endpoint does exactly three things: accept parameters, call the
+/// application service and pick the success status. No validation, no business rules, no data access.
 /// </summary>
 public static class TimeEntryEndpoints
 {

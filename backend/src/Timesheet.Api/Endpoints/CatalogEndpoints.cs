@@ -3,7 +3,7 @@ using Timesheet.Application.Contracts;
 
 namespace Timesheet.Api.Endpoints;
 
-/// <summary>Справочники, периоды, ставки и обслуживающие операции.</summary>
+/// <summary>Catalogues, periods and rate history.</summary>
 public static class CatalogEndpoints
 {
     public static IEndpointRouteBuilder MapCatalogs(this IEndpointRouteBuilder api)

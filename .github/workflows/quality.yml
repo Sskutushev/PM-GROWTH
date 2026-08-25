@@ -28,6 +28,11 @@ jobs:
       - run: npm run lint
       - run: npm run test
       - run: npm run build
+  comments:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check-comment-language.py
   semgrep:
     runs-on: ubuntu-latest
     container: returntocorp/semgrep

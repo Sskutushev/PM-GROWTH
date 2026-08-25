@@ -8,8 +8,8 @@ using Timesheet.Domain.Policies;
 namespace Timesheet.Application;
 
 /// <summary>
-/// Оркестрация: валидация входа → загрузка контекста → доменные правила → запись.
-/// Бизнес-правил не содержит, про HTTP и Mongo не знает.
+/// Orchestration: validate input, load context, apply domain rules, persist.
+/// Holds no business rules of its own and knows nothing about HTTP or Mongo.
 /// </summary>
 public sealed class TimesheetService(
     ITimesheetStore store,
@@ -17,7 +17,7 @@ public sealed class TimesheetService(
     IValidator<TimeEntryQuery> queryValidator,
     IValidator<RateUpdateRequest> rateValidator)
 {
-    // ---------- Чтение ----------
+    // ---------- Reads ----------
 
     public Task<PagedResult<TimeEntryView>> List(TimeEntryQuery query, CancellationToken token)
     {
@@ -27,7 +27,7 @@ public sealed class TimesheetService(
 
     public Task<ProjectReport> Report(int year, int month, CancellationToken token)
     {
-        _ = MonthRange.Create(year, month); // бросит доменную 400 на месяце вне диапазона
+        _ = MonthRange.Create(year, month); // throws a domain 400 for a month out of range
         return store.Report(year, month, token);
     }
 
@@ -35,7 +35,7 @@ public sealed class TimesheetService(
 
     public Task<IReadOnlyList<LookupItem>> Projects(CancellationToken token) => store.Projects(token);
 
-    // ---------- Запись табеля ----------
+    // ---------- Time entry writes ----------
 
     public async Task<TimeEntry> Create(SaveTimeEntryRequest request, CancellationToken token)
     {
@@ -75,7 +75,7 @@ public sealed class TimesheetService(
         var current = await store.GetEntry(id, token)
             ?? throw DomainException.NotFound(ErrorCodes.TimeEntryNotFound, "Запись табеля не найдена.");
 
-        // Проверяются оба месяца: и тот, откуда запись уходит, и тот, куда переносится.
+        // Both months are checked: the one the entry leaves and the one it moves into.
         var context = await LoadContext(request, excludingId: id, sourceDate: current.Date, token);
         var rate = TimeEntryPolicy.ValidateAndResolveRate(context);
 
@@ -111,7 +111,7 @@ public sealed class TimesheetService(
         }
     }
 
-    // ---------- Периоды и ставки ----------
+    // ---------- Periods and rates ----------
 
     public Task SetPeriod(int year, int month, bool closed, CancellationToken token)
     {
@@ -134,7 +134,7 @@ public sealed class TimesheetService(
 
     public Task Seed(CancellationToken token) => store.Seed(token);
 
-    // ---------- Внутреннее ----------
+    // ---------- Internals ----------
 
     private async Task<TimeEntryContext> LoadContext(
         SaveTimeEntryRequest request,
@@ -150,8 +150,8 @@ public sealed class TimesheetService(
 
         var targetClosed = await store.IsPeriodClosed(request.Date, token);
 
-        // При создании исходного периода нет. При переносе записи в другой месяц
-        // закрытым не должен быть ни исходный месяц, ни целевой.
+        // There is no source period when creating. When moving an entry to another month,
+        // neither the source nor the target month may be closed.
         var sourceClosed = sourceDate switch
         {
             null => false,

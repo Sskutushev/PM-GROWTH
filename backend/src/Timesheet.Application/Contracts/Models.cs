@@ -1,11 +1,11 @@
 namespace Timesheet.Application.Contracts;
 
-// ---------- Запись табеля ----------
+// ---------- Time entry ----------
 
 /// <summary>
-/// Тело запроса на создание и изменение записи.
-/// <see cref="Version"/> обязателен при изменении: это версия, которую клиент видел,
-/// когда открывал форму. По ней ловится конкурентное редактирование.
+/// Request body for creating and editing an entry. <see cref="Version"/> is required on edit:
+/// it is the version the client saw when the form was opened, and it is how concurrent
+/// editing is detected.
 /// </summary>
 public sealed record SaveTimeEntryRequest(
     string EmployeeId,
@@ -15,7 +15,7 @@ public sealed record SaveTimeEntryRequest(
     string Comment,
     long? Version = null);
 
-/// <summary>Строка табеля в том виде, в котором её показывает интерфейс.</summary>
+/// <summary>A timesheet row shaped the way the UI displays it.</summary>
 public sealed record TimeEntryView(
     string Id,
     string EmployeeId,
@@ -31,7 +31,7 @@ public sealed record TimeEntryView(
     decimal DailyHours,
     long Version);
 
-/// <summary>Границы пагинации. Верхний предел защищает базу от запроса «отдай мне весь месяц одной страницей».</summary>
+/// <summary>Pagination bounds. The upper limit stops a client from asking for a whole month in one page.</summary>
 public static class Paging
 {
     public const int DefaultPageSize = 25;
@@ -47,9 +47,9 @@ public sealed record TimeEntryQuery(
     int PageSize = Paging.DefaultPageSize);
 
 /// <summary>
-/// Страница результатов. Итоги (<see cref="TotalHours"/>, <see cref="TotalAmount"/>) считаются
-/// отдельной агрегацией по полному фильтру, а не по строкам страницы: иначе при пагинации
-/// пользователь видел бы итог одной страницы под видом итога месяца.
+/// A page of results. Totals (<see cref="TotalHours"/>, <see cref="TotalAmount"/>) come from a
+/// separate aggregation over the full filter, not from the rows on the page: otherwise a
+/// paginated user would see one page's total presented as the month's total.
 /// </summary>
 public sealed record PagedResult<T>(
     IReadOnlyList<T> Items,
@@ -66,7 +66,7 @@ public sealed record PagedResult<T>(
     public bool HasNext => Page < TotalPages;
 }
 
-// ---------- Отчёт ----------
+// ---------- Report ----------
 
 public sealed record ProjectReportRow(
     string ProjectId,
@@ -84,11 +84,11 @@ public sealed record ProjectReport(
     decimal TotalHours,
     decimal TotalAmount);
 
-// ---------- Справочники ----------
+// ---------- Catalogues ----------
 
 public sealed record LookupItem(string Id, string Code, string Name);
 
-// ---------- Ставки ----------
+// ---------- Rates ----------
 
 public sealed record RateUpdateRequest(IReadOnlyList<RateInput> Rates);
 
@@ -96,10 +96,10 @@ public sealed record RateInput(DateOnly ValidFrom, decimal Value);
 
 public sealed record RecalculationResult(long Recalculated, long SkippedInClosedPeriods);
 
-// ---------- Периоды ----------
+// ---------- Periods ----------
 
 /// <summary>
-/// Тело запроса закрытия и открытия месяца.
-/// Живёт в Application, а не в Program.cs: у контракта запроса есть валидатор, и они должны быть рядом.
+/// Request body for closing and reopening a month. It lives in Application rather than
+/// Program.cs because the contract has a validator and the two belong together.
 /// </summary>
 public sealed record PeriodRequest(int Year, int Month);

@@ -1,8 +1,8 @@
 namespace Timesheet.Domain.Errors;
 
 /// <summary>
-/// Коды ошибок API. Клиент ветвится по коду, а не по тексту: текст переписывают и переводят,
-/// код — часть контракта.
+/// API error codes. Clients branch on the code, never on the message: messages get
+/// rewritten and translated, the code is part of the contract.
 /// </summary>
 public static class ErrorCodes
 {
@@ -18,6 +18,6 @@ public static class ErrorCodes
     public const string ProjectNotFound = "PROJECT_NOT_FOUND";
     public const string BrokenReference = "BROKEN_REFERENCE";
 
-    /// <summary>Единственный код, который сопровождается HTTP 500.</summary>
+    /// <summary>The only code ever paired with HTTP 500.</summary>
     public const string InternalError = "INTERNAL_ERROR";
 }

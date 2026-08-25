@@ -5,8 +5,8 @@ using Timesheet.Domain.Models;
 namespace Timesheet.Domain.Policies;
 
 /// <summary>
-/// Ставка, действовавшая на дату: максимальный <c>ValidFrom &lt;= date</c>.
-/// Наивное «взять первую из списка» даёт неверные деньги.
+/// The rate in force on a date: the highest <c>ValidFrom &lt;= date</c>.
+/// Naively taking the first item in the list produces wrong money.
 /// </summary>
 public static class RateResolver
 {
@@ -24,7 +24,7 @@ public static class RateResolver
             new Dictionary<string, object?> { ["date"] = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) });
     }
 
-    /// <summary>Без исключения — для проверки плана пересчёта, где отсутствие ставки ожидаемо.</summary>
+    /// <summary>Non-throwing variant, used when a missing rate is an expected outcome.</summary>
     public static bool TryResolve(IReadOnlyCollection<HourlyRate> rates, DateOnly date, out decimal rate)
     {
         rate = 0m;
@@ -39,8 +39,8 @@ public static class RateResolver
             return false;
         }
 
-        // Две ставки с одной датой начала делают расчёт недетерминированным:
-        // это порча справочника, а не «выберем любую».
+        // Two rates starting on the same day make the calculation non-deterministic.
+        // That is corrupt reference data, not a case for picking either one.
         if (applicable.Length > 1 && applicable[0].ValidFrom == applicable[1].ValidFrom)
         {
             throw new DomainException(
@@ -52,7 +52,7 @@ public static class RateResolver
         return true;
     }
 
-    /// <summary>Проверяет непротиворечивость всей истории ставок до того, как она будет сохранена.</summary>
+    /// <summary>Validates the whole rate history before it is persisted.</summary>
     public static void EnsureHistoryIsValid(IReadOnlyCollection<HourlyRate> rates)
     {
         if (rates.Count == 0)

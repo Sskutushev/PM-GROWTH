@@ -1,6 +1,6 @@
 rules:
-  # `.Result` ловится только как обращение к свойству задачи: граница слова не даёт
-  # правилу срабатывать на `FluentValidation.Results` и подобных пространствах имён.
+  # `.Result` is matched only as a task property access: the word boundary keeps the rule
+  # from firing on `FluentValidation.Results` and similar namespaces.
   - id: csharp-sync-over-async
     languages: [csharp]
     message: Sync-over-async can exhaust the thread pool. Await the task instead.
@@ -19,7 +19,7 @@ rules:
     severity: ERROR
     pattern-regex: "(double|float)\\s+(Amount|Budget|Rate|Price|Cost|Total)"
 
-  # Пустой catch прячет ошибку: разрешён только с явным комментарием почему.
+  # An empty catch hides the failure.
   - id: csharp-silent-catch
     languages: [csharp]
     message: Empty catch block swallows the failure silently.
@@ -44,7 +44,7 @@ rules:
     severity: ERROR
     pattern: $DATE.toLocaleDateString(...)
 
-  # Ответ сервера обязан проверяться: иначе 400/409 выглядит для пользователя как успех.
+  # The response status has to be checked, otherwise a 400/409 looks like success to the user.
   - id: fetch-without-status-check
     languages: [typescript]
     message: Check response.ok before treating a fetch result as success.

@@ -1,11 +1,11 @@
 namespace Timesheet.Domain.Models;
 
-/// <summary>Ставка действует с <paramref name="ValidFrom"/> до начала следующей.</summary>
+/// <summary>A rate is in force from <paramref name="ValidFrom"/> until the next one starts.</summary>
 public sealed record HourlyRate(DateOnly ValidFrom, decimal Value);
 
 /// <summary>
-/// История ставок лежит внутри сотрудника: она мала, читается всегда целиком
-/// и меняется только вместе с ним. Отдельная коллекция дала бы join без выигрыша.
+/// Rate history lives inside the employee: it is small, always read in full and only
+/// changes together with the employee. A separate collection would add a join for nothing.
 /// </summary>
 public sealed class Employee
 {
@@ -15,7 +15,7 @@ public sealed class Employee
 
     public required string Department { get; init; }
 
-    /// <summary>Порядок не гарантируется — упорядочивает <c>RateResolver</c>.</summary>
+    /// <summary>Order is not guaranteed; <c>RateResolver</c> sorts it.</summary>
     public List<HourlyRate> Rates { get; init; } = [];
 }
 
@@ -23,7 +23,7 @@ public sealed class Project
 {
     public required string Id { get; init; }
 
-    /// <summary>Шифр вида «П-001». Уникальность держит индекс в Mongo.</summary>
+    /// <summary>Human-readable project code. Uniqueness is enforced by a Mongo index.</summary>
     public required string Code { get; init; }
 
     public required string Name { get; init; }
@@ -32,7 +32,7 @@ public sealed class Project
 
     public DateOnly StartDate { get; init; }
 
-    /// <summary><c>null</c> — проект бессрочный.</summary>
+    /// <summary><c>null</c> means the project has no end date.</summary>
     public DateOnly? EndDate { get; init; }
 }
 
@@ -44,7 +44,7 @@ public sealed class TimeEntry
 
     public required string ProjectId { get; set; }
 
-    /// <summary>Бизнес-дата без времени: сутки табеля не зависят от таймзоны сервера.</summary>
+    /// <summary>Business date without a time part: a timesheet day must not depend on the server timezone.</summary>
     public DateOnly Date { get; set; }
 
     public decimal Hours { get; set; }
@@ -52,14 +52,14 @@ public sealed class TimeEntry
     public string Comment { get; set; } = string.Empty;
 
     /// <summary>
-    /// Ставка на момент расчёта. Денормализована, чтобы месячный отчёт был
-    /// <c>$match + $group</c> без join к истории ставок. Синхронизируется при изменении истории.
+    /// The rate used at calculation time. Denormalised so the monthly report stays a plain
+    /// <c>$match + $group</c> with no join into rate history; resynchronised when history changes.
     /// </summary>
     public decimal AppliedRate { get; set; }
 
     public decimal Amount { get; set; }
 
-    /// <summary>Оптимистическая блокировка: растёт на каждой успешной записи.</summary>
+    /// <summary>Optimistic concurrency token: incremented on every successful write.</summary>
     public long Version { get; set; }
 
     public DateTime CreatedAtUtc { get; init; }

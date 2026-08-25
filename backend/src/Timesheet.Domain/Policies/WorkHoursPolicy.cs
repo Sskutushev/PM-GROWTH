@@ -2,16 +2,16 @@ using Timesheet.Domain.Errors;
 
 namespace Timesheet.Domain.Policies;
 
-/// <summary>Правила по часам: формат одной записи, суточный лимит и признак переработки.</summary>
+/// <summary>Hour rules: the shape of a single entry, the daily cap and the overtime flag.</summary>
 public static class WorkHoursPolicy
 {
-    /// <summary>Жёсткий суточный лимит: больше 24 часов в календарных сутках не бывает.</summary>
+    /// <summary>Hard daily cap: a calendar day cannot hold more than 24 hours.</summary>
     public const decimal DailyLimit = 24m;
 
-    /// <summary>Мягкий порог: день сверх него сохраняется, но помечается как переработка.</summary>
+    /// <summary>Soft threshold: a day above it is still saved, but flagged as overtime.</summary>
     public const decimal OvertimeThreshold = 12m;
 
-    /// <summary>Часы задаются с шагом в полчаса.</summary>
+    /// <summary>Hours are entered in half-hour steps.</summary>
     public const decimal Step = 0.5m;
 
     public static void EnsureEntryHours(decimal hours)
@@ -32,8 +32,8 @@ public static class WorkHoursPolicy
     }
 
     /// <summary>
-    /// Лимит считается по всем проектам сотрудника за дату.
-    /// <paramref name="alreadyLogged"/> не включает изменяемую запись.
+    /// The cap spans every project the employee logged that date.
+    /// <paramref name="alreadyLogged"/> excludes the entry currently being edited.
     /// </summary>
     public static void EnsureDailyLimit(decimal alreadyLogged, decimal requested)
     {
@@ -55,8 +55,8 @@ public static class WorkHoursPolicy
     }
 
     /// <summary>
-    /// Свойство дня, а не записи: появляется и исчезает при изменении соседних записей,
-    /// поэтому вычисляется на чтении, а не хранится.
+    /// A property of the day, not of the entry: it appears and disappears as neighbouring
+    /// entries change, so it is computed on read instead of being stored.
     /// </summary>
     public static bool IsOvertime(decimal dailyHours) => dailyHours > OvertimeThreshold;
 }

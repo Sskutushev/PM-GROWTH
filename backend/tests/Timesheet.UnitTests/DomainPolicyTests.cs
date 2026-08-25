@@ -5,7 +5,7 @@ using Timesheet.Domain.Policies;
 
 namespace Timesheet.UnitTests;
 
-// Домен не зависит от Mongo и ASP.NET, поэтому здесь нет ни моков, ни контейнеров.
+// The domain depends on neither Mongo nor ASP.NET, so there are no mocks and no containers here.
 public sealed class DomainPolicyTests
 {
     private static readonly Employee Ivanov = new()
@@ -43,13 +43,13 @@ public sealed class DomainPolicyTests
     private static DateOnly D(string value) =>
         DateOnly.ParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
 
-    // ---------- Выбор ставки по дате ----------
+    // ---------- Rate selection by date ----------
 
     [Theory]
-    [InlineData("2026-01-01", 500)] // первый день действия первой ставки
-    [InlineData("2026-02-28", 500)] // день до повышения
-    [InlineData("2026-03-01", 600)] // день повышения — новая ставка действует сразу
-    [InlineData("2027-01-01", 600)] // последняя ставка действует бессрочно
+    [InlineData("2026-01-01", 500)] // first day the first rate is in force
+    [InlineData("2026-02-28", 500)] // the day before the raise
+    [InlineData("2026-03-01", 600)] // the day of the raise: the new rate applies immediately
+    [InlineData("2027-01-01", 600)] // the last rate stays in force indefinitely
     public void Rate_is_resolved_by_entry_date(string date, decimal expected) =>
         Assert.Equal(expected, RateResolver.Resolve(Ivanov.Rates, D(date)));
 
@@ -109,7 +109,7 @@ public sealed class DomainPolicyTests
             Assert.Throws<DomainException>(() =>
                 RateResolver.EnsureHistoryIsValid([new HourlyRate(D("2026-01-01"), 0m)])).Code);
 
-    // ---------- Часы ----------
+    // ---------- Hours ----------
 
     [Theory]
     [InlineData(0)]
@@ -152,25 +152,25 @@ public sealed class DomainPolicyTests
     }
 
     [Theory]
-    [InlineData(12, false)] // ровно порог — ещё не переработка
+    [InlineData(12, false)] // exactly at the threshold is not yet overtime
     [InlineData(12.5, true)]
     [InlineData(20, true)]
     public void Overtime_is_a_property_of_the_day(decimal dailyHours, bool expected) =>
         Assert.Equal(expected, WorkHoursPolicy.IsOvertime(dailyHours));
 
-    // ---------- Деньги ----------
+    // ---------- Money ----------
 
     [Theory]
     [InlineData(8, 500, 4000)]
     [InlineData(8, 600, 4800)]
     [InlineData(4, 700, 2800)]
     [InlineData(10, 700, 7000)]
-    [InlineData(8, 650, 5200)] // сценарий №8 из приёмочных проверок
+    [InlineData(8, 650, 5200)] // acceptance scenario 8
     public void Acceptance_money_examples_match(decimal hours, decimal rate, decimal expected) =>
         Assert.Equal(expected, Money.Calculate(hours, rate));
 
     [Theory]
-    [InlineData(2.345, 2.35)] // половина округляется от нуля, а не «к чётному»
+    [InlineData(2.345, 2.35)] // halves go away from zero, not to even
     [InlineData(2.355, 2.36)]
     [InlineData(-2.345, -2.35)]
     [InlineData(0.005, 0.01)]
@@ -180,12 +180,12 @@ public sealed class DomainPolicyTests
     [Fact]
     public void Money_keeps_precision_where_double_would_drift()
     {
-        // 0,1 + 0,2 в double даёт 0,30000000000000004; на decimal накопления погрешности нет.
+        // 0.1 + 0.2 in double gives 0.30000000000000004; decimal accumulates no such error.
         var total = Enumerable.Range(0, 10).Aggregate(0m, (sum, _) => sum + Money.Calculate(0.5m, 33.33m));
         Assert.Equal(166.70m, total);
     }
 
-    // ---------- Бюджет ----------
+    // ---------- Budget ----------
 
     [Theory]
     [InlineData(7600, 20000, 38)]
@@ -197,7 +197,7 @@ public sealed class DomainPolicyTests
     [Fact]
     public void Budget_flags_use_unrounded_percentage()
     {
-        // 100,004 % округляется до 100,00 %, но перерасход должен остаться виден.
+        // 100.004% rounds to 100.00%, but the overspend must stay visible.
         var state = BudgetPolicy.Evaluate(100.004m, 100m);
 
         Assert.Equal(100m, state.DisplayPercent);
@@ -206,9 +206,9 @@ public sealed class DomainPolicyTests
     }
 
     [Theory]
-    [InlineData(80, false, false)] // ровно порог риска — ещё не риск
+    [InlineData(80, false, false)] // exactly at the risk threshold is not yet at risk
     [InlineData(80.01, true, false)]
-    [InlineData(100, true, false)] // ровно бюджет — риск, но не перерасход
+    [InlineData(100, true, false)] // exactly on budget is at risk but not overspent
     [InlineData(100.01, false, true)]
     public void Risk_and_overspend_do_not_overlap(decimal amount, bool atRisk, bool overspent)
     {
@@ -228,7 +228,7 @@ public sealed class DomainPolicyTests
         Assert.False(state.IsOverspent);
     }
 
-    // ---------- Месяц ----------
+    // ---------- Month ----------
 
     [Fact]
     public void Month_is_a_half_open_interval()
@@ -252,14 +252,14 @@ public sealed class DomainPolicyTests
     [InlineData(9999, 3)]
     public void Invalid_month_is_a_client_error_not_a_server_fault(int year, int month)
     {
-        // Тип исключения доменный — значит API отдаст 400, а не 500.
+        // The exception type is a domain one, which is what makes the API answer 400 and not 500.
         var error = Assert.Throws<DomainException>(() => MonthRange.Create(year, month));
 
         Assert.Equal(ErrorCodes.ValidationFailed, error.Code);
         Assert.Equal(400, error.Status);
     }
 
-    // ---------- Правила записи ----------
+    // ---------- Entry rules ----------
 
     [Fact]
     public void Project_boundaries_are_inclusive()

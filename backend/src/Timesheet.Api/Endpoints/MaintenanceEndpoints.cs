@@ -2,7 +2,7 @@ using Timesheet.Application;
 
 namespace Timesheet.Api.Endpoints;
 
-/// <summary>Операции обслуживания стенда: наполнение контрольными данными.</summary>
+/// <summary>Maintenance operations: seeding the reference data and inspecting indexes.</summary>
 public static class MaintenanceEndpoints
 {
     public static IEndpointRouteBuilder MapMaintenance(this IEndpointRouteBuilder api)

@@ -8,6 +8,6 @@ seed:
 test:
 	dotnet test Timesheet.sln && npm --prefix frontend test
 quality:
-	dotnet build Timesheet.sln -warnaserror && npm --prefix frontend run typecheck && npm --prefix frontend run lint && npm --prefix frontend run test && npm --prefix frontend run build && npm --prefix frontend run format
+	python3 scripts/check-comment-language.py && dotnet build Timesheet.sln -warnaserror && npm --prefix frontend run typecheck && npm --prefix frontend run lint && npm --prefix frontend run test && npm --prefix frontend run build && npm --prefix frontend run format
 verify: seed
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1

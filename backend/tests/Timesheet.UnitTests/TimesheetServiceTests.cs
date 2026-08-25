@@ -6,8 +6,8 @@ using Timesheet.Domain.Models;
 
 namespace Timesheet.UnitTests;
 
-// Сценарии прикладного слоя на in-memory хранилище: порядок загрузки контекста,
-// перенос записи между месяцами, оптимистическая блокировка, код доходящей до клиента ошибки.
+// Application-layer scenarios against the in-memory store: context loading order, moving an
+// entry between months, optimistic concurrency and which error code reaches the client.
 public sealed class TimesheetServiceTests
 {
     private static readonly Employee Ivanov = new()
@@ -81,7 +81,7 @@ public sealed class TimesheetServiceTests
             string.Empty,
             version);
 
-    // ---------- Создание ----------
+    // ---------- Creation ----------
 
     [Fact]
     public async Task Create_applies_the_rate_effective_on_the_entry_date()
@@ -175,7 +175,7 @@ public sealed class TimesheetServiceTests
         Assert.Equal(0, store.EntryCount);
     }
 
-    // ---------- Суточный лимит ----------
+    // ---------- Daily cap ----------
 
     [Fact]
     public async Task Twenty_hours_are_saved_and_marked_as_overtime()
@@ -225,7 +225,7 @@ public sealed class TimesheetServiceTests
 
         var created = await service.Create(Request(date: "2026-03-06", hours: 20m), default);
 
-        // Тот же день, 24 часа: если бы старые 20 часов учитывались, вышло бы 44 и отказ.
+        // Same day, 24 hours: if the previous 20 still counted this would be 44 and get rejected.
         var updated = await service.Update(
             created.Id,
             Request(date: "2026-03-06", hours: 24m, version: created.Version),
@@ -234,7 +234,7 @@ public sealed class TimesheetServiceTests
         Assert.Equal(24m, updated.Hours);
     }
 
-    // ---------- Конкурентность ----------
+    // ---------- Concurrency ----------
 
     [Fact]
     public async Task Second_save_of_a_stale_version_is_rejected()
@@ -242,10 +242,10 @@ public sealed class TimesheetServiceTests
         var (service, store) = Build();
         var created = await service.Create(Request(), default);
 
-        // Первая вкладка сохранила изменения.
+        // The first tab saved its changes.
         await service.Update(created.Id, Request(hours: 4m, version: created.Version), default);
 
-        // Вторая вкладка всё ещё держит версию, которую видела при открытии формы.
+        // The second tab still holds the version it saw when the form was opened.
         var error = await Assert.ThrowsAsync<DomainException>(() =>
             service.Update(created.Id, Request(hours: 6m, version: created.Version), default));
 
@@ -313,7 +313,7 @@ public sealed class TimesheetServiceTests
         Assert.Equal(404, error.Status);
     }
 
-    // ---------- Закрытые периоды ----------
+    // ---------- Closed periods ----------
 
     [Fact]
     public async Task Entries_in_a_closed_period_cannot_be_edited()
@@ -380,7 +380,7 @@ public sealed class TimesheetServiceTests
         Assert.Equal(4_800m, moved.Amount);
     }
 
-    // ---------- Отчёт ----------
+    // ---------- Report ----------
 
     [Fact]
     public async Task Report_matches_the_acceptance_table()
@@ -424,7 +424,7 @@ public sealed class TimesheetServiceTests
         Assert.Equal(ErrorCodes.ValidationFailed, error.Code);
     }
 
-    // ---------- Ретроактивное изменение ставок ----------
+    // ---------- Retroactive rate changes ----------
 
     [Fact]
     public async Task Rate_change_recalculates_open_entries()
@@ -465,7 +465,7 @@ public sealed class TimesheetServiceTests
 
         Assert.Equal(1, result.Recalculated);
         Assert.Equal(1, result.SkippedInClosedPeriods);
-        Assert.Equal(4_000m, store.Stored(february.Id).Amount); // закрытый месяц не тронут
+        Assert.Equal(4_000m, store.Stored(february.Id).Amount); // the closed month is untouched
         Assert.Equal(5_200m, store.Stored(march.Id).Amount);
     }
 
@@ -497,7 +497,7 @@ public sealed class TimesheetServiceTests
         Assert.Equal(ErrorCodes.ValidationFailed, error.Code);
     }
 
-    // ---------- Список ----------
+    // ---------- Listing ----------
 
     [Fact]
     public async Task List_totals_cover_the_whole_filter_not_just_the_page()
@@ -513,7 +513,7 @@ public sealed class TimesheetServiceTests
 
         Assert.Equal(2, page.Items.Count);
         Assert.Equal(6, page.TotalCount);
-        Assert.Equal(12m, page.TotalHours); // итог месяца, а не двух строк страницы
+        Assert.Equal(12m, page.TotalHours); // the month total, not the two rows on the page
         Assert.Equal(3, page.TotalPages);
         Assert.True(page.HasNext);
         Assert.False(page.HasPrevious);
