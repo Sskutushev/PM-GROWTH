@@ -24,7 +24,9 @@ const schema = yup.object({
     .number()
     .typeError("Укажите часы числом")
     .positive("Часы должны быть больше нуля")
-    .max(24, "За день нельзя списать больше 24 часов")
+    // The daily cap spans every entry of that day and only the server can check it. This one
+    // is the rule about a single entry, and the wording has to say so.
+    .max(24, "В одной записи нельзя указать больше 24 часов")
     .test(
       "step",
       "Шаг — 0,5 часа",
@@ -145,18 +147,17 @@ export function EntryModal({
   );
 }
 
-function FormField({
-  label,
-  error,
-  children,
-  ...props
-}: {
+type FormFieldProps = {
   label: string;
-  name: string;
+  name: keyof FormValues;
   error?: string | false;
   children?: React.ReactNode;
-  [key: string]: unknown;
-}) {
+  as?: "select" | "textarea";
+  type?: "date" | "number" | "text";
+  step?: string;
+};
+
+function FormField({ label, error, children, ...props }: FormFieldProps) {
   return (
     <label>
       {label}

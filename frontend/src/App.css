@@ -452,6 +452,26 @@ tbody tr:hover {
   padding: 50px;
   text-align: center;
   color: var(--muted);
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.empty p {
+  margin: 0;
+}
+
+.reset {
+  align-self: end;
+}
+
+.retry {
+  padding: 0 14px 14px;
+}
+
+td .skeleton {
+  height: 14px;
+  width: 100%;
 }
 
 .error {
