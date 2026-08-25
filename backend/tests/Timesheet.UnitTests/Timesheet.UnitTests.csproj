@@ -19,5 +19,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <ItemGroup><ProjectReference Include="..\..\src\Timesheet.Domain\Timesheet.Domain.csproj" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Timesheet.Domain\Timesheet.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Timesheet.Application\Timesheet.Application.csproj" />
+  </ItemGroup>
 </Project>

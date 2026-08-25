@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <ItemGroup><PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" /></ItemGroup>
+  <ItemGroup><PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" /><PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" /></ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Timesheet.Application\Timesheet.Application.csproj" />
     <ProjectReference Include="..\Timesheet.Infrastructure\Timesheet.Infrastructure.csproj" />
