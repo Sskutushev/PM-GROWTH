@@ -14,10 +14,14 @@ namespace Timesheet.Infrastructure;
 /// </summary>
 public sealed class MongoTimesheetStore : ITimesheetStore
 {
+    private readonly IMongoClient client;
     private readonly IMongoDatabase database;
 
-    public MongoTimesheetStore(IMongoClient client, IOptions<MongoOptions> options) =>
+    public MongoTimesheetStore(IMongoClient client, IOptions<MongoOptions> options)
+    {
+        this.client = client;
         database = client.GetDatabase(options.Value.Database);
+    }
 
     private IMongoCollection<BsonDocument> Entries => database.GetCollection<BsonDocument>(MongoCollections.TimeEntries);
 
@@ -187,21 +191,21 @@ public sealed class MongoTimesheetStore : ITimesheetStore
 
         var entries = documents.Select(MongoMapping.Entry).ToArray();
 
-        var employees = (await Employees_.Find(FilterDefinition<BsonDocument>.Empty).ToListAsync(ct))
+        // Only the names referenced by this page, not the whole catalogue.
+        var employeeIds = entries.Select(x => x.EmployeeId).Distinct().ToArray();
+        var projectIds = entries.Select(x => x.ProjectId).Distinct().ToArray();
+
+        var employees = (await Employees_
+                .Find(Builders<BsonDocument>.Filter.In<string>("_id", employeeIds))
+                .ToListAsync(ct))
             .ToDictionary(x => x["_id"].AsString, x => x["fullName"].AsString);
 
-        var projects = (await Projects_.Find(FilterDefinition<BsonDocument>.Empty).ToListAsync(ct))
+        var projects = (await Projects_
+                .Find(Builders<BsonDocument>.Filter.In<string>("_id", projectIds))
+                .ToListAsync(ct))
             .ToDictionary(x => x["_id"].AsString, x => x["code"].AsString);
 
-        var daily = new Dictionary<(string, DateOnly), decimal>();
-        foreach (var entry in entries)
-        {
-            var key = (entry.EmployeeId, entry.Date);
-            if (!daily.ContainsKey(key))
-            {
-                daily[key] = await GetDailyHours(entry.EmployeeId, entry.Date, null, ct);
-            }
-        }
+        var daily = await DailyHoursForPage(entries, ct);
 
         var items = entries
             .Select(entry =>
@@ -229,6 +233,50 @@ public sealed class MongoTimesheetStore : ITimesheetStore
         var totalAmount = totals.Count == 0 ? 0m : MongoMapping.Decimal(totals[0]["amount"]);
 
         return new PagedResult<TimeEntryView>(items, query.Page, query.PageSize, totalCount, totalHours, totalAmount);
+    }
+
+    /// <summary>
+    /// Daily totals for every (employee, date) pair on the page in one aggregation. Asking per row
+    /// cost one round trip per pair, which on a full page meant dozens of queries for one screen.
+    /// The filter is a cross product of the page's employees and dates, so it may cover a few pairs
+    /// the page does not show; the extra rows are simply never looked up.
+    /// </summary>
+    private async Task<Dictionary<(string EmployeeId, DateOnly Date), decimal>> DailyHoursForPage(
+        TimeEntry[] entries,
+        CancellationToken ct)
+    {
+        var result = new Dictionary<(string, DateOnly), decimal>();
+
+        if (entries.Length == 0)
+        {
+            return result;
+        }
+
+        var employeeIds = entries.Select(x => x.EmployeeId).Distinct();
+        var dates = entries.Select(x => MongoMapping.ToUtc(x.Date)).Distinct();
+
+        var filter = Builders<BsonDocument>.Filter.In<string>("employeeId", employeeIds)
+            & Builders<BsonDocument>.Filter.In<DateTime>("date", dates);
+
+        var totals = await Entries
+            .Aggregate()
+            .Match(filter)
+            .Group(new BsonDocument
+            {
+                ["_id"] = new BsonDocument { ["employeeId"] = "$employeeId", ["date"] = "$date" },
+                ["total"] = new BsonDocument("$sum", "$hours"),
+            })
+            .ToListAsync(ct);
+
+        foreach (var row in totals)
+        {
+            var key = row["_id"].AsBsonDocument;
+            var date = DateOnly.FromDateTime(key["date"].ToUniversalTime());
+
+            result[(key["employeeId"].AsString, date)] = MongoMapping.Decimal(row["total"]);
+        }
+
+        return result;
     }
 
     // ---------- Report ----------
@@ -287,53 +335,110 @@ public sealed class MongoTimesheetStore : ITimesheetStore
 
     // ---------- Rates ----------
 
+    /// <summary>
+    /// Rewrites the rate history and reprices the employee's entries. Everything is priced before
+    /// anything is written: the old version wrote the history first and then failed mid-loop on an
+    /// entry the new history did not cover, leaving the employee with a new history and half of the
+    /// entries still on the old rate. The writes themselves go in one transaction so a failure
+    /// halfway through the batch cannot leave the same split behind.
+    /// </summary>
     public async Task<RecalculationResult> UpdateRates(
         string employeeId,
         IReadOnlyList<HourlyRate> rates,
         CancellationToken ct)
     {
-        var updateResult = await Employees_.UpdateOneAsync(
-            new BsonDocument("_id", employeeId),
-            new BsonDocument("$set", new BsonDocument("rates", MongoMapping.Rates(rates))),
-            cancellationToken: ct);
+        var employeeExists = await Employees_
+            .Find(new BsonDocument("_id", employeeId))
+            .AnyAsync(ct);
 
-        if (updateResult.MatchedCount == 0)
+        if (!employeeExists)
         {
             throw DomainException.NotFound(ErrorCodes.EmployeeNotFound, "Сотрудник не найден.");
         }
 
-        long recalculated = 0;
+        var closedPeriods = await ClosedPeriodKeys(ct);
+        var documents = await Entries.Find(new BsonDocument("employeeId", employeeId)).ToListAsync(ct);
+
+        var writes = new List<WriteModel<BsonDocument>>(documents.Count);
+        var now = DateTime.UtcNow;
         long skipped = 0;
 
-        using var cursor = await Entries.FindAsync(new BsonDocument("employeeId", employeeId), cancellationToken: ct);
-
-        while (await cursor.MoveNextAsync(ct))
+        foreach (var document in documents)
         {
-            foreach (var document in cursor.Current)
+            var entry = MongoMapping.Entry(document);
+
+            if (closedPeriods.Contains((entry.Date.Year, entry.Date.Month)))
             {
-                var entry = MongoMapping.Entry(document);
-
-                if (await IsPeriodClosed(entry.Date, ct))
-                {
-                    skipped++;
-                    continue;
-                }
-
-                entry.AppliedRate = RateResolver.Resolve(rates, entry.Date);
-                entry.Amount = Money.Calculate(entry.Hours, entry.AppliedRate);
-                entry.Version++;
-                entry.UpdatedAtUtc = DateTime.UtcNow;
-
-                await Entries.ReplaceOneAsync(
-                    new BsonDocument("_id", entry.Id),
-                    MongoMapping.Entry(entry),
-                    cancellationToken: ct);
-
-                recalculated++;
+                skipped++;
+                continue;
             }
+
+            // Throws RATE_NOT_FOUND when the new history does not cover the entry — still no writes.
+            entry.AppliedRate = RateResolver.Resolve(rates, entry.Date);
+            entry.Amount = Money.Calculate(entry.Hours, entry.AppliedRate);
+            entry.UpdatedAtUtc = now;
+
+            var expectedVersion = entry.Version;
+            entry.Version++;
+
+            writes.Add(new ReplaceOneModel<BsonDocument>(
+                new BsonDocument { ["_id"] = entry.Id, ["version"] = expectedVersion },
+                MongoMapping.Entry(entry)));
         }
 
-        return new RecalculationResult(recalculated, skipped);
+        await Commit(employeeId, rates, writes, ct);
+
+        return new RecalculationResult(writes.Count, skipped);
+    }
+
+    private async Task Commit(
+        string employeeId,
+        IReadOnlyList<HourlyRate> rates,
+        List<WriteModel<BsonDocument>> writes,
+        CancellationToken ct)
+    {
+        using var session = await client.StartSessionAsync(cancellationToken: ct);
+
+        session.StartTransaction();
+
+        try
+        {
+            await Employees_.UpdateOneAsync(
+                session,
+                new BsonDocument("_id", employeeId),
+                new BsonDocument("$set", new BsonDocument("rates", MongoMapping.Rates(rates))),
+                cancellationToken: ct);
+
+            if (writes.Count > 0)
+            {
+                var result = await Entries.BulkWriteAsync(session, writes, cancellationToken: ct);
+
+                // The filters pin the version each entry had when it was priced, so a mismatch means
+                // somebody edited an entry while the recalculation was running.
+                if (result.MatchedCount != writes.Count)
+                {
+                    throw DomainException.Conflict(
+                        ErrorCodes.ConcurrencyConflict,
+                        "Записи изменились во время пересчёта. Повторите операцию.");
+                }
+            }
+
+            await session.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await session.AbortTransactionAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
+    private async Task<HashSet<(int Year, int Month)>> ClosedPeriodKeys(CancellationToken ct)
+    {
+        var documents = await ClosedPeriods.Find(FilterDefinition<BsonDocument>.Empty).ToListAsync(ct);
+
+        return documents
+            .Select(x => (x["year"].AsInt32, x["month"].AsInt32))
+            .ToHashSet();
     }
 
     // ---------- Maintenance ----------
