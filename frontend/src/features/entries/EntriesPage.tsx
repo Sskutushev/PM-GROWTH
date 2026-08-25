@@ -11,13 +11,19 @@ import { EntryModal } from "./EntryModal";
 import { DeleteEntryDialog } from "./DeleteEntryDialog";
 import { currentMonth } from "./month";
 
+// Which dialog is open, spelled out as a union: "new" and an entry in the same slot invited
+// checks like `editing === "new"` scattered across the render.
+type Editing = { mode: "create" } | { mode: "edit"; entry: Entry };
+
+const defaultPageSize = 25;
+
 export function EntriesPage() {
   const [month, setMonth] = useState(currentMonth);
   const [employeeId, setEmployee] = useState("");
   const [projectId, setProject] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [editing, setEditing] = useState<Entry | "new" | null>(null);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
+  const [editing, setEditing] = useState<Editing | null>(null);
   const [removing, setRemoving] = useState<Entry | null>(null);
 
   const [year, monthNumber] = month.split("-").map(Number);
@@ -46,6 +52,7 @@ export function EntriesPage() {
 
   const totalCount = query.data?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const filtered = employeeId !== "" || projectId !== "";
 
   // Removing the last row of a page would leave the user staring at an empty one.
   const stepBackIfPageEmpties = () => {
@@ -60,13 +67,22 @@ export function EntriesPage() {
     };
   };
 
+  const resetFilters = () => {
+    setEmployee("");
+    setProject("");
+    setPage(1);
+  };
+
   return (
     <>
       <Header
         eyebrow="Учёт времени"
         title="Табель"
         action={
-          <button className="primary" onClick={() => setEditing("new")}>
+          <button
+            className="primary"
+            onClick={() => setEditing({ mode: "create" })}
+          >
             <span aria-hidden="true">＋</span> Добавить запись
           </button>
         }
@@ -94,6 +110,11 @@ export function EntriesPage() {
           options={projects.data ?? []}
           all="Все проекты"
         />
+        {filtered && (
+          <button className="reset" onClick={resetFilters}>
+            Сбросить фильтры
+          </button>
+        )}
       </section>
       <div className="stats">
         <Metric
@@ -118,11 +139,18 @@ export function EntriesPage() {
       <section className="panel">
         <div className="panel-title">
           <h2>Записи за месяц</h2>
-          <span>
+          <span aria-live="polite">
             {query.isFetching ? "Обновляем…" : entriesLabel(totalCount)}
           </span>
         </div>
-        {query.error && <ErrorBanner error={query.error} />}
+        {query.error && (
+          <>
+            <ErrorBanner error={query.error} />
+            <div className="retry">
+              <button onClick={() => query.refetch()}>Повторить запрос</button>
+            </div>
+          </>
+        )}
         <div className="table-wrap">
           <table>
             <thead>
@@ -140,6 +168,7 @@ export function EntriesPage() {
               </tr>
             </thead>
             <tbody>
+              {query.isLoading && <SkeletonRows />}
               {query.data?.items.map((entry, index) => (
                 <tr
                   key={entry.id}
@@ -173,7 +202,7 @@ export function EntriesPage() {
                     <button
                       className="icon"
                       aria-label={`Редактировать запись от ${formatDate(entry.date)}`}
-                      onClick={() => setEditing(entry)}
+                      onClick={() => setEditing({ mode: "edit", entry })}
                     >
                       ✎
                     </button>
@@ -190,9 +219,19 @@ export function EntriesPage() {
             </tbody>
           </table>
         </div>
-        {query.isLoading && <div className="empty">Загружаем записи…</div>}
-        {!query.isLoading && totalCount === 0 && (
-          <div className="empty">За выбранный период записей нет</div>
+        {!query.isLoading && !query.error && totalCount === 0 && (
+          // An empty month and an over-filtered month look the same in the table but need
+          // different next steps from the user.
+          <div className="empty">
+            {filtered ? (
+              <>
+                <p>Под выбранные фильтры записей нет</p>
+                <button onClick={resetFilters}>Сбросить фильтры</button>
+              </>
+            ) : (
+              <p>За выбранный период записей нет</p>
+            )}
+          </div>
         )}
         {totalCount > 0 && (
           <Pagination
@@ -206,7 +245,7 @@ export function EntriesPage() {
       </section>
       {editing && (
         <EntryModal
-          entry={editing === "new" ? null : editing}
+          entry={editing.mode === "edit" ? editing.entry : null}
           employees={employees.data ?? []}
           projects={projects.data ?? []}
           month={month}
@@ -220,6 +259,23 @@ export function EntriesPage() {
           onClose={() => setRemoving(null)}
         />
       )}
+    </>
+  );
+}
+
+// Placeholder rows keep the table height stable, so the page does not jump when data lands.
+function SkeletonRows() {
+  return (
+    <>
+      {[0, 1, 2].map((row) => (
+        <tr key={row} aria-hidden="true">
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((cell) => (
+            <td key={cell}>
+              <span className="skeleton" />
+            </td>
+          ))}
+        </tr>
+      ))}
     </>
   );
 }

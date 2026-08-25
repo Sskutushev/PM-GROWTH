@@ -1,8 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+﻿import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Entry, Page } from "../../api";
+import { ApiError, type Entry, type Page } from "../../api";
 import { EntriesPage } from "./EntriesPage";
 
 const { entries, remove } = vi.hoisted(() => ({
@@ -15,8 +15,12 @@ vi.mock("../../api", async (importOriginal) => ({
   api: {
     entries,
     remove,
-    employees: () => Promise.resolve([]),
-    projects: () => Promise.resolve([]),
+    employees: () =>
+      Promise.resolve([{ id: "ivanov", code: "", name: "Иванов И. И." }]),
+    projects: () =>
+      Promise.resolve([
+        { id: "p001", code: "П-001", name: "Реконструкция цеха" },
+      ]),
     report: () => Promise.resolve({ items: [], totalHours: 0, totalAmount: 0 }),
     save: () => Promise.resolve({} as Entry),
   },
@@ -59,6 +63,10 @@ const renderPage = () => {
   );
 };
 
+// The employee also appears in the filter dropdown, so a row is looked for inside the table.
+const findRow = () =>
+  within(screen.getByRole("table")).findByText("Иванов И. И.");
+
 beforeEach(() => {
   vi.clearAllMocks();
   entries.mockResolvedValue(page([entry("e1", "2026-03-05")], 1));
@@ -69,8 +77,10 @@ describe("EntriesPage", () => {
   it("shows the rows the API returned", async () => {
     renderPage();
 
-    expect(await screen.findByText("Иванов И. И.")).toBeInTheDocument();
-    expect(screen.getByText("П-001")).toBeInTheDocument();
+    expect(await findRow()).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("table")).getByText("П-001"),
+    ).toBeInTheDocument();
   });
 
   it("asks for the selected page and page size", async () => {
@@ -78,7 +88,7 @@ describe("EntriesPage", () => {
 
     renderPage();
 
-    await screen.findByText("Иванов И. И.");
+    await findRow();
     await userEvent.click(screen.getByLabelText("Следующая страница"));
 
     await waitFor(() =>
@@ -100,7 +110,7 @@ describe("EntriesPage", () => {
   it("deletes a row through a confirmation dialog", async () => {
     renderPage();
 
-    await screen.findByText("Иванов И. И.");
+    await findRow();
     await userEvent.click(
       screen.getByLabelText(/^Удалить запись от/, { selector: "button" }),
     );
@@ -119,7 +129,7 @@ describe("EntriesPage", () => {
   it("keeps the row when the dialog is dismissed", async () => {
     renderPage();
 
-    await screen.findByText("Иванов И. И.");
+    await findRow();
     await userEvent.click(
       screen.getByLabelText(/^Удалить запись от/, { selector: "button" }),
     );
@@ -137,5 +147,72 @@ describe("EntriesPage", () => {
     expect(
       await screen.findByText("За выбранный период записей нет"),
     ).toBeInTheDocument();
+  });
+
+  it("sends a chosen filter and goes back to the first page", async () => {
+    entries.mockResolvedValue(page([entry("e1", "2026-03-05")], 60));
+
+    renderPage();
+
+    await findRow();
+    await userEvent.click(screen.getByLabelText("Следующая страница"));
+    await waitFor(() =>
+      expect(entries).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 }),
+      ),
+    );
+
+    await userEvent.selectOptions(screen.getByLabelText("Проект"), "p001");
+
+    await waitFor(() =>
+      expect(entries).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, projectId: "p001" }),
+      ),
+    );
+  });
+
+  it("offers to clear the filters and clears them", async () => {
+    renderPage();
+
+    await findRow();
+    expect(screen.queryByText("Сбросить фильтры")).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Сотрудник"), "ivanov");
+    await userEvent.click(screen.getByText("Сбросить фильтры"));
+
+    await waitFor(() =>
+      expect(entries).toHaveBeenLastCalledWith(
+        expect.objectContaining({ employeeId: "", projectId: "" }),
+      ),
+    );
+  });
+
+  it("tells an over-filtered month apart from an empty one", async () => {
+    entries.mockResolvedValue(page([], 0));
+
+    renderPage();
+
+    await screen.findByText("За выбранный период записей нет");
+
+    await userEvent.selectOptions(screen.getByLabelText("Сотрудник"), "ivanov");
+
+    expect(
+      await screen.findByText("Под выбранные фильтры записей нет"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the failure and lets the user retry it", async () => {
+    entries.mockRejectedValueOnce(
+      new ApiError("REQUEST_FAILED", "База недоступна."),
+    );
+    entries.mockResolvedValue(page([entry("e1", "2026-03-05")], 1));
+
+    renderPage();
+
+    expect(await screen.findByText("База недоступна.")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Повторить запрос"));
+
+    expect(await findRow()).toBeInTheDocument();
   });
 });
