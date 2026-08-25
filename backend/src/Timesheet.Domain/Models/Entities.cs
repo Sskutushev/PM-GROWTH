@@ -23,7 +23,7 @@ public sealed class Project
 {
     public required string Id { get; init; }
 
-    /// <summary>Code such as "П-001". Uniqueness is enforced by a Mongo index.</summary>
+    /// <summary>Human-readable project code. Uniqueness is enforced by a Mongo index.</summary>
     public required string Code { get; init; }
 
     public required string Name { get; init; }
