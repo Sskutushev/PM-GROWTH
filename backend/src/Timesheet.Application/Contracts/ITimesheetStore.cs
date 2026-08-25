@@ -62,4 +62,10 @@ public interface ITimesheetStore
     // ---------- Maintenance ----------
 
     Task Seed(CancellationToken cancellationToken);
+
+    /// <summary>Creates the missing indexes. Idempotent; called at startup and after seeding.</summary>
+    Task EnsureIndexes(CancellationToken cancellationToken);
+
+    /// <summary>The indexes that actually exist, for diagnostics and for the test that guards them.</summary>
+    Task<IReadOnlyList<IndexReport>> DescribeIndexes(CancellationToken cancellationToken);
 }

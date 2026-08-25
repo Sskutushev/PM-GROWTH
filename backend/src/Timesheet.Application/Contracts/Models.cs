@@ -96,6 +96,11 @@ public sealed record RateInput(DateOnly ValidFrom, decimal Value);
 
 public sealed record RecalculationResult(long Recalculated, long SkippedInClosedPeriods);
 
+// ---------- Maintenance ----------
+
+/// <summary>Indexes of one collection as they exist in the database right now.</summary>
+public sealed record IndexReport(string Collection, IReadOnlyList<string> Indexes);
+
 // ---------- Periods ----------
 
 /// <summary>

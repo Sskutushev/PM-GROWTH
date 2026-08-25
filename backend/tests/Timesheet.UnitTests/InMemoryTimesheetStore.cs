@@ -270,6 +270,12 @@ internal sealed class InMemoryTimesheetStore : ITimesheetStore
         return Task.CompletedTask;
     }
 
+    public Task EnsureIndexes(CancellationToken ct) => Task.CompletedTask;
+
+    // In-memory dictionaries have no indexes, so report nothing rather than invent index names.
+    public Task<IReadOnlyList<IndexReport>> DescribeIndexes(CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<IndexReport>>([]);
+
     private static TimeEntry Clone(TimeEntry entry) => new()
     {
         Id = entry.Id,

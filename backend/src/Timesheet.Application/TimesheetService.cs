@@ -134,6 +134,8 @@ public sealed class TimesheetService(
 
     public Task Seed(CancellationToken token) => store.Seed(token);
 
+    public Task<IReadOnlyList<IndexReport>> DescribeIndexes(CancellationToken token) => store.DescribeIndexes(token);
+
     // ---------- Internals ----------
 
     private async Task<TimeEntryContext> LoadContext(

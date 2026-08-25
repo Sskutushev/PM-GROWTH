@@ -17,10 +17,17 @@ public static class DependencyInjection
     {
         services.Configure<MongoOptions>(configuration.GetSection(MongoOptions.Section));
 
+        // A silent fallback to localhost hides a broken configuration until the first request
+        // and points production at the wrong database. Failing to start is the honest outcome.
         var connectionString = configuration
             .GetSection(MongoOptions.Section)
-            .GetValue<string>(nameof(MongoOptions.ConnectionString))
-            ?? "mongodb://localhost:27017";
+            .GetValue<string>(nameof(MongoOptions.ConnectionString));
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                $"Не задана строка подключения {MongoOptions.Section}:{nameof(MongoOptions.ConnectionString)}.");
+        }
 
         // MongoClient is thread-safe and owns the connection pool, so it has to be a singleton.
         services.AddSingleton<IMongoClient>(_ => new MongoClient(connectionString));

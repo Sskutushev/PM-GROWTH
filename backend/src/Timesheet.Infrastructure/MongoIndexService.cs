@@ -1,14 +1,14 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace Timesheet.Infrastructure;
 
 /// <summary>
-/// Creates indexes at startup. The operation is idempotent: Mongo does not rebuild an index
-/// that already exists with the same name and keys.
+/// Creates indexes at startup. The definitions live in <see cref="MongoIndexCatalog"/>, and the
+/// operation is idempotent: Mongo does not rebuild an index that already exists with the same
+/// name and keys.
 /// </summary>
 public sealed partial class MongoIndexService(
     IMongoClient client,
@@ -17,48 +17,7 @@ public sealed partial class MongoIndexService(
 {
     public async Task StartAsync(CancellationToken ct)
     {
-        var database = client.GetDatabase(options.Value.Database);
-
-        await database
-            .GetCollection<BsonDocument>(MongoCollections.TimeEntries)
-            .Indexes
-            .CreateManyAsync(
-                [
-                    // Monthly report: a date range first, then grouping by project.
-                    new CreateIndexModel<BsonDocument>(
-                        Builders<BsonDocument>.IndexKeys.Ascending("date").Ascending("projectId"),
-                        new CreateIndexOptions { Name = "date_project" }),
-
-                    // Daily cap and the employee+month filter: equality before range (the ESR rule).
-                    new CreateIndexModel<BsonDocument>(
-                        Builders<BsonDocument>.IndexKeys.Ascending("employeeId").Ascending("date"),
-                        new CreateIndexOptions { Name = "employee_date" }),
-
-                    // The project+month filter.
-                    new CreateIndexModel<BsonDocument>(
-                        Builders<BsonDocument>.IndexKeys.Ascending("projectId").Ascending("date"),
-                        new CreateIndexOptions { Name = "project_date" }),
-                ],
-                ct);
-
-        await database
-            .GetCollection<BsonDocument>(MongoCollections.Projects)
-            .Indexes
-            .CreateOneAsync(
-                new CreateIndexModel<BsonDocument>(
-                    Builders<BsonDocument>.IndexKeys.Ascending("code"),
-                    new CreateIndexOptions { Unique = true, Name = "unique_code" }),
-                cancellationToken: ct);
-
-        await database
-            .GetCollection<BsonDocument>(MongoCollections.ClosedPeriods)
-            .Indexes
-            .CreateOneAsync(
-                new CreateIndexModel<BsonDocument>(
-                    Builders<BsonDocument>.IndexKeys.Ascending("year").Ascending("month"),
-                    new CreateIndexOptions { Unique = true, Name = "unique_period" }),
-                cancellationToken: ct);
-
+        await MongoIndexCatalog.EnsureAsync(client.GetDatabase(options.Value.Database), ct);
         LogIndexesEnsured(logger, options.Value.Database);
     }
 

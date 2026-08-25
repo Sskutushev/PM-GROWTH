@@ -340,10 +340,15 @@ public sealed class MongoTimesheetStore : ITimesheetStore
 
     public async Task Seed(CancellationToken ct)
     {
-        await database.DropCollectionAsync(MongoCollections.TimeEntries, ct);
-        await database.DropCollectionAsync(MongoCollections.Employees, ct);
-        await database.DropCollectionAsync(MongoCollections.Projects, ct);
-        await database.DropCollectionAsync(MongoCollections.ClosedPeriods, ct);
+        // Clear documents instead of dropping collections: DropCollection takes the collection's
+        // indexes with it, and seeding data must not change the storage schema.
+        await Entries.DeleteManyAsync(FilterDefinition<BsonDocument>.Empty, ct);
+        await Employees_.DeleteManyAsync(FilterDefinition<BsonDocument>.Empty, ct);
+        await Projects_.DeleteManyAsync(FilterDefinition<BsonDocument>.Empty, ct);
+        await ClosedPeriods.DeleteManyAsync(FilterDefinition<BsonDocument>.Empty, ct);
+
+        // The first run may reach this point before the collections exist; index creation is idempotent.
+        await EnsureIndexes(ct);
 
         var employees = new[]
         {
@@ -424,6 +429,11 @@ public sealed class MongoTimesheetStore : ITimesheetStore
 
         await Entries.InsertManyAsync(documents, cancellationToken: ct);
     }
+
+    public Task EnsureIndexes(CancellationToken ct) => MongoIndexCatalog.EnsureAsync(database, ct);
+
+    public Task<IReadOnlyList<IndexReport>> DescribeIndexes(CancellationToken ct) =>
+        MongoIndexCatalog.DescribeAsync(database, ct);
 
     private static FilterDefinition<BsonDocument> BuildListFilter(TimeEntryQuery query)
     {
