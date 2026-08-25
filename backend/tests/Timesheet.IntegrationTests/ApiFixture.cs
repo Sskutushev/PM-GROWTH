@@ -10,8 +10,11 @@ namespace Timesheet.IntegrationTests;
 // expensive. Isolation between tests comes from reseeding the data.
 public sealed class ApiFixture : IAsyncLifetime
 {
+    // A replica set, like docker-compose: rate recalculation writes in a transaction, and Mongo
+    // refuses transactions on a standalone server.
     private readonly MongoDbContainer mongo = new MongoDbBuilder()
         .WithImage("mongo:7.0")
+        .WithReplicaSet("rs0")
         .Build();
 
     private WebApplicationFactory<Program>? factory;
