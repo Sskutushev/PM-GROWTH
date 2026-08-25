@@ -1,0 +1,15 @@
+name: backend setup
+description: Installs the .NET SDK and restores the solution.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    - uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ hashFiles('**/*.csproj', 'backend/Directory.Build.props') }}
+        restore-keys: nuget-
+    - run: dotnet restore Timesheet.sln
+      shell: bash
