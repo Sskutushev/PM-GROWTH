@@ -1,41 +1,151 @@
 name: quality
+
+# Every lane is a chain of one-purpose jobs, so a red run points at the exact stage that
+# broke instead of at a single job with eight steps inside it.
 on:
   pull_request:
   push:
     branches: [main]
+
 permissions: { contents: read }
+
 jobs:
-  backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with: { dotnet-version: 8.0.x }
-      - run: dotnet restore Timesheet.sln
-      - run: dotnet format Timesheet.sln --verify-no-changes --no-restore
-      - run: dotnet build Timesheet.sln -c Release --no-restore -warnaserror
-      - run: dotnet test Timesheet.sln -c Release --no-build --collect:"XPlat Code Coverage"
-  frontend:
-    runs-on: ubuntu-latest
-    defaults: { run: { working-directory: frontend } }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
-      - run: npm ci
-      - run: npm run format
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run test
-      - run: npm run build
+  # ---------- guards ----------
+
   comments:
+    name: guards · comment language
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: python3 scripts/check-comment-language.py
+
   semgrep:
+    name: guards · semgrep
     runs-on: ubuntu-latest
     container: returntocorp/semgrep
     steps:
       - uses: actions/checkout@v4
       - run: semgrep scan --config .semgrep.yml --error backend frontend/src
+
+  # ---------- frontend ----------
+
+  frontend-install:
+    name: frontend · 1 install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/frontend-setup
+
+  frontend-format:
+    name: frontend · 2 format
+    needs: frontend-install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/frontend-setup
+      - run: npm run format
+        working-directory: frontend
+
+  frontend-lint:
+    name: frontend · 3 lint
+    needs: frontend-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/frontend-setup
+      - run: npm run lint
+        working-directory: frontend
+
+  frontend-typecheck:
+    name: frontend · 4 typecheck
+    needs: frontend-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/frontend-setup
+      - run: npm run typecheck
+        working-directory: frontend
+
+  frontend-test:
+    name: frontend · 5 test
+    needs: frontend-typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/frontend-setup
+      - run: npm run test
+        working-directory: frontend
+
+  frontend-build:
+    name: frontend · 6 build
+    needs: frontend-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/frontend-setup
+      - run: npm run build
+        working-directory: frontend
+
+  # ---------- backend ----------
+
+  backend-restore:
+    name: backend · 1 restore
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/backend-setup
+
+  backend-format:
+    name: backend · 2 format
+    needs: backend-restore
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/backend-setup
+      - run: dotnet format Timesheet.sln --verify-no-changes --no-restore
+
+  backend-build:
+    name: backend · 3 build
+    needs: backend-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/backend-setup
+      - run: dotnet build Timesheet.sln -c Release --no-restore -warnaserror
+
+  backend-unit-test:
+    name: backend · 4 unit tests
+    needs: backend-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/backend-setup
+      - run: >
+          dotnet test backend/tests/Timesheet.UnitTests/Timesheet.UnitTests.csproj
+          -c Release --no-restore --collect:"XPlat Code Coverage"
+
+  backend-integration-test:
+    name: backend · 5 integration tests
+    needs: backend-unit-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/backend-setup
+      - run: >
+          dotnet test backend/tests/Timesheet.IntegrationTests/Timesheet.IntegrationTests.csproj
+          -c Release --no-restore --collect:"XPlat Code Coverage"
+          --filter FullyQualifiedName!~IndexLifecycleTests
+
+  # The storage schema here is the set of Mongo indexes, created by the application rather
+  # than by a migration tool. This stage is the equivalent check: it boots the app against a
+  # real database, seeds it and asserts the declared indexes exist and the queries use them.
+  backend-schema:
+    name: backend · 6 index lifecycle
+    needs: backend-integration-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/backend-setup
+      - run: >
+          dotnet test backend/tests/Timesheet.IntegrationTests/Timesheet.IntegrationTests.csproj
+          -c Release --no-restore --filter FullyQualifiedName~IndexLifecycleTests
