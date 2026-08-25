@@ -22,7 +22,7 @@ export const number = (value: number) => numberFormat.format(value);
 export const formatDate = (value: string) =>
   dayFormat.format(new Date(`${value}T00:00:00`));
 
-// "N записей" in Russian needs three forms, and the table header shows the count on every page.
+// Russian counts need three plural forms, and the table header shows a count on every page.
 export const plural = (count: number, forms: [string, string, string]) => {
   const tens = Math.abs(count) % 100;
   const units = tens % 10;
