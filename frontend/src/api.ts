@@ -37,6 +37,14 @@ export type Report = {
   totalHours: number;
   totalAmount: number;
 };
+export type EntryQuery = {
+  year: number;
+  month: number;
+  employeeId: string;
+  projectId: string;
+  page: number;
+  pageSize: number;
+};
 export class ApiError extends Error {
   code: string;
   details: Record<string, unknown>;
@@ -67,14 +75,16 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   return response.json();
 };
 export const api = {
-  entries: (
-    year: number,
-    month: number,
-    employeeId: string,
-    projectId: string,
-  ) =>
+  entries: (query: EntryQuery) =>
     request<Page>(
-      `/time-entries?${new URLSearchParams({ year: String(year), month: String(month), page: "1", pageSize: "50", ...(employeeId ? { employeeId } : {}), ...(projectId ? { projectId } : {}) })}`,
+      `/time-entries?${new URLSearchParams({
+        year: String(query.year),
+        month: String(query.month),
+        page: String(query.page),
+        pageSize: String(query.pageSize),
+        ...(query.employeeId ? { employeeId: query.employeeId } : {}),
+        ...(query.projectId ? { projectId: query.projectId } : {}),
+      })}`,
     ),
   employees: () => request<Lookup[]>("/employees"),
   projects: () => request<Lookup[]>("/projects"),
@@ -84,5 +94,11 @@ export const api = {
     request<Entry>(id ? `/time-entries/${id}` : "/time-entries", {
       method: id ? "POST" : "PUT",
       body: JSON.stringify(body),
+    }),
+  // The version travels with the delete so a stale row cannot silently remove somebody
+  // else's edit: the API answers 409 when it does not match.
+  remove: (id: string, version: number) =>
+    request<void>(`/time-entries/${id}?version=${version}`, {
+      method: "DELETE",
     }),
 };
