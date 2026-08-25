@@ -1,6 +1,7 @@
 using Timesheet.Domain.Errors;
 using Timesheet.Domain.Models;
 namespace Timesheet.Domain.Policies;
+
 public static class RateResolver
 {
     public static decimal Resolve(IReadOnlyCollection<HourlyRate> rates, DateOnly date)

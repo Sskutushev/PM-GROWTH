@@ -1,6 +1,7 @@
 using MongoDB.Bson;
 using Timesheet.Domain.Models;
 namespace Timesheet.Infrastructure;
+
 internal static class MongoMapping
 {
     internal static DateTime ToUtc(DateOnly value) => DateTime.SpecifyKind(value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);

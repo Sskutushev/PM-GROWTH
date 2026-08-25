@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using Timesheet.Application.Contracts;
 namespace Timesheet.Infrastructure;
+
 public static class DependencyInjection
 {
     public static IServiceCollection AddMongoInfrastructure(this IServiceCollection services, IConfiguration configuration)

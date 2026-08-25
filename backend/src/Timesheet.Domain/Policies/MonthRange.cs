@@ -1,4 +1,5 @@
 namespace Timesheet.Domain.Policies;
+
 public readonly record struct MonthRange(DateOnly Start, DateOnly EndExclusive)
 {
     public static MonthRange Create(int year, int month)

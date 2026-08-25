@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 namespace Timesheet.Infrastructure;
+
 public sealed class MongoIndexService(IMongoClient client, IOptions<MongoOptions> options) : IHostedService
 {
     public async Task StartAsync(CancellationToken ct)

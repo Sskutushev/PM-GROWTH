@@ -1,4 +1,5 @@
 namespace Timesheet.Domain.Policies;
+
 public sealed record BudgetState(decimal? RawPercent, decimal? DisplayPercent, bool IsAtRisk, bool IsOverspent);
 public static class BudgetPolicy
 {

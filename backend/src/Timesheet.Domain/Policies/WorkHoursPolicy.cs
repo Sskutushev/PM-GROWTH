@@ -1,5 +1,6 @@
 using Timesheet.Domain.Errors;
 namespace Timesheet.Domain.Policies;
+
 public static class WorkHoursPolicy
 {
     public const decimal DailyLimit = 24m;

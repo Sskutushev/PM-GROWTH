@@ -6,6 +6,7 @@ using Timesheet.Domain.Errors;
 using Timesheet.Domain.Models;
 using Timesheet.Domain.Policies;
 namespace Timesheet.Infrastructure;
+
 public sealed class MongoTimesheetStore : ITimesheetStore
 {
     private readonly IMongoDatabase db;
@@ -70,11 +71,11 @@ public sealed class MongoTimesheetStore : ITimesheetStore
     public async Task Seed(CancellationToken ct)
     {
         await db.DropCollectionAsync("time_entries", ct); await db.DropCollectionAsync("employees", ct); await db.DropCollectionAsync("projects", ct); await db.DropCollectionAsync("closed_periods", ct);
-        var employees = new[] { EmployeeDoc("ivanov", "Иванов И. И.", new HourlyRate(new(2026,1,1),500m), new HourlyRate(new(2026,3,1),600m)), EmployeeDoc("petrova", "Петрова А. С.", new HourlyRate(new(2026,2,1),700m)) };
+        var employees = new[] { EmployeeDoc("ivanov", "Иванов И. И.", new HourlyRate(new(2026, 1, 1), 500m), new HourlyRate(new(2026, 3, 1), 600m)), EmployeeDoc("petrova", "Петрова А. С.", new HourlyRate(new(2026, 2, 1), 700m)) };
         await EmployeesCollection.InsertManyAsync(employees, cancellationToken: ct);
-        await ProjectsCollection.InsertManyAsync([ProjectDoc("p001","П-001","Реконструкция цеха",20000m,new(2026,1,1),new(2026,3,31)), ProjectDoc("p002","П-002","Инженерные сети",5000m,new(2026,3,1),null)], cancellationToken: ct);
-        var data = new[] { ("ivanov","p001",new DateOnly(2026,2,20),8m,500m), ("ivanov","p001",new DateOnly(2026,3,5),8m,600m), ("petrova","p001",new DateOnly(2026,3,5),4m,700m), ("petrova","p002",new DateOnly(2026,3,6),10m,700m) };
-        foreach (var x in data) await Insert(new TimeEntry { Id = Guid.NewGuid().ToString("N"), EmployeeId = x.Item1, ProjectId = x.Item2, Date = x.Item3, Hours = x.Item4, AppliedRate = x.Item5, Amount = Money.Calculate(x.Item4,x.Item5), Version = 1, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow }, ct);
+        await ProjectsCollection.InsertManyAsync([ProjectDoc("p001", "П-001", "Реконструкция цеха", 20000m, new(2026, 1, 1), new(2026, 3, 31)), ProjectDoc("p002", "П-002", "Инженерные сети", 5000m, new(2026, 3, 1), null)], cancellationToken: ct);
+        var data = new[] { ("ivanov", "p001", new DateOnly(2026, 2, 20), 8m, 500m), ("ivanov", "p001", new DateOnly(2026, 3, 5), 8m, 600m), ("petrova", "p001", new DateOnly(2026, 3, 5), 4m, 700m), ("petrova", "p002", new DateOnly(2026, 3, 6), 10m, 700m) };
+        foreach (var x in data) await Insert(new TimeEntry { Id = Guid.NewGuid().ToString("N"), EmployeeId = x.Item1, ProjectId = x.Item2, Date = x.Item3, Hours = x.Item4, AppliedRate = x.Item5, Amount = Money.Calculate(x.Item4, x.Item5), Version = 1, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow }, ct);
     }
     public async Task<RecalculationResult> UpdateRates(string employeeId, IReadOnlyList<HourlyRate> rates, CancellationToken ct)
     {

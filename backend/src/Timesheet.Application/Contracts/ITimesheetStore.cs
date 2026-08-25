@@ -1,5 +1,6 @@
 using Timesheet.Domain.Models;
 namespace Timesheet.Application.Contracts;
+
 public interface ITimesheetStore
 {
     Task<Employee?> GetEmployee(string id, CancellationToken cancellationToken);

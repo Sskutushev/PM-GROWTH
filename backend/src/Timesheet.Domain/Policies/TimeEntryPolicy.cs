@@ -1,6 +1,7 @@
 using Timesheet.Domain.Errors;
 using Timesheet.Domain.Models;
 namespace Timesheet.Domain.Policies;
+
 public static class TimeEntryPolicy
 {
     public static decimal ValidateAndCalculate(bool oldPeriodClosed, bool newPeriodClosed, decimal hours, Project project, Employee employee, DateOnly date, decimal alreadyLogged)

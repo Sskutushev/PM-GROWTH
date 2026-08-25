@@ -3,6 +3,7 @@ using Timesheet.Domain.Errors;
 using Timesheet.Domain.Models;
 using Timesheet.Domain.Policies;
 namespace Timesheet.Application;
+
 public sealed class TimesheetService(ITimesheetStore store)
 {
     public Task<PagedResult<TimeEntryView>> List(TimeEntryQuery query, CancellationToken token)
